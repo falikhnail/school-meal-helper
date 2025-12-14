@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Teacher } from '@/types/meal';
+import { Teacher, ROLE_LABELS } from '@/types/meal';
 import { formatCurrency, getMonthName } from '@/lib/dateUtils';
 import { Receipt, TrendingUp } from 'lucide-react';
 
@@ -56,7 +56,7 @@ export function MonthlySummary({
                     <div>
                       <p className="font-medium text-foreground text-sm">{teacher.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {teacher.role === 'kepala_sekolah' ? 'Kepala Sekolah' : 'Guru'}
+                        {ROLE_LABELS[teacher.role]}
                       </p>
                     </div>
                   </div>

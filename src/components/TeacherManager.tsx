@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Trash2, UserCircle, GraduationCap } from 'lucide-react';
+import { Plus, Trash2, UserCircle, GraduationCap, Stethoscope, Users2, Crown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -17,7 +17,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { Teacher, TeacherRole } from '@/types/meal';
+import { Teacher, TeacherRole, ROLE_LABELS } from '@/types/meal';
 import { toast } from 'sonner';
 
 interface TeacherManagerProps {
@@ -25,6 +25,36 @@ interface TeacherManagerProps {
   addTeacher: (name: string, role: TeacherRole) => Teacher;
   removeTeacher: (id: string) => void;
 }
+
+const getRoleIcon = (role: TeacherRole) => {
+  switch (role) {
+    case 'kepala_sekolah':
+      return <GraduationCap className="w-4 h-4 text-accent-foreground" />;
+    case 'guru':
+      return <UserCircle className="w-4 h-4 text-primary" />;
+    case 'tendik':
+      return <Users2 className="w-4 h-4 text-blue-500" />;
+    case 'nakes':
+      return <Stethoscope className="w-4 h-4 text-red-500" />;
+    case 'kepala_komite':
+      return <Crown className="w-4 h-4 text-amber-500" />;
+  }
+};
+
+const getRoleBgColor = (role: TeacherRole) => {
+  switch (role) {
+    case 'kepala_sekolah':
+      return 'bg-accent/20';
+    case 'guru':
+      return 'bg-primary/10';
+    case 'tendik':
+      return 'bg-blue-500/10';
+    case 'nakes':
+      return 'bg-red-500/10';
+    case 'kepala_komite':
+      return 'bg-amber-500/10';
+  }
+};
 
 export function TeacherManager({ teachers, addTeacher, removeTeacher }: TeacherManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -97,6 +127,24 @@ export function TeacherManager({ teachers, addTeacher, removeTeacher }: TeacherM
                           Guru
                         </span>
                       </SelectItem>
+                      <SelectItem value="tendik">
+                        <span className="flex items-center gap-2">
+                          <Users2 className="w-4 h-4" />
+                          Tendik
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="nakes">
+                        <span className="flex items-center gap-2">
+                          <Stethoscope className="w-4 h-4" />
+                          Nakes
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="kepala_komite">
+                        <span className="flex items-center gap-2">
+                          <Crown className="w-4 h-4" />
+                          Kepala Komite
+                        </span>
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -124,17 +172,13 @@ export function TeacherManager({ teachers, addTeacher, removeTeacher }: TeacherM
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${teacher.role === 'kepala_sekolah' ? 'bg-accent/20' : 'bg-primary/10'}`}>
-                    {teacher.role === 'kepala_sekolah' ? (
-                      <GraduationCap className="w-4 h-4 text-accent-foreground" />
-                    ) : (
-                      <UserCircle className="w-4 h-4 text-primary" />
-                    )}
+                  <div className={`p-2 rounded-lg ${getRoleBgColor(teacher.role)}`}>
+                    {getRoleIcon(teacher.role)}
                   </div>
                   <div>
                     <p className="font-medium text-foreground">{teacher.name}</p>
                     <p className="text-xs text-muted-foreground">
-                      {teacher.role === 'kepala_sekolah' ? 'Kepala Sekolah' : 'Guru'}
+                      {ROLE_LABELS[teacher.role]}
                     </p>
                   </div>
                 </div>

@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Teacher, MealRecord, MealType, DAYS_OF_WEEK, MEAL_PRICES } from '@/types/meal';
+import { Teacher, MealRecord, MealType, DAYS_OF_WEEK, MEAL_PRICES, ROLE_LABELS } from '@/types/meal';
 import {
   getWeekDates,
   getWeekNumber,
@@ -148,7 +148,7 @@ export function WeeklyMealTable({
                         <td className="py-3 px-2">
                           <div className="font-medium text-foreground text-sm">{teacher.name}</div>
                           <div className="text-xs text-muted-foreground">
-                            {teacher.role === 'kepala_sekolah' ? 'Kepala Sekolah' : 'Guru'}
+                            {ROLE_LABELS[teacher.role]}
                           </div>
                         </td>
                         {weekDates.map((date) => {
