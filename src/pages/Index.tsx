@@ -3,9 +3,10 @@ import { StatsCards } from '@/components/StatsCards';
 import { TeacherManager } from '@/components/TeacherManager';
 import { WeeklyMealTable } from '@/components/WeeklyMealTable';
 import { MonthlySummary } from '@/components/MonthlySummary';
+import { MonthYearFilter } from '@/components/MonthYearFilter';
 import { useMealTracker } from '@/hooks/useMealTracker';
 import { getStartOfWeek } from '@/lib/dateUtils';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 
 const Index = () => {
   const {
@@ -20,7 +21,16 @@ const Index = () => {
     getTeacherMonthlyTotal,
   } = useMealTracker();
 
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getStartOfWeek(new Date()));
+  const today = new Date();
+  const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
+  
+  const getFirstWeekOfMonth = useCallback((month: number, year: number) => {
+    const firstDay = new Date(year, month - 1, 1);
+    return getStartOfWeek(firstDay);
+  }, []);
+
+  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getStartOfWeek(today));
 
   const handleWeekChange = (direction: 'prev' | 'next') => {
     setCurrentWeekStart((prev) => {
@@ -30,18 +40,39 @@ const Index = () => {
     });
   };
 
-  const currentMonth = new Date().getMonth() + 1;
-  const currentYear = new Date().getFullYear();
+  const handleMonthChange = (month: number) => {
+    setSelectedMonth(month);
+    setCurrentWeekStart(getFirstWeekOfMonth(month, selectedYear));
+  };
+
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    setCurrentWeekStart(getFirstWeekOfMonth(selectedMonth, year));
+  };
+
+  const handleResetFilter = () => {
+    const now = new Date();
+    setSelectedMonth(now.getMonth() + 1);
+    setSelectedYear(now.getFullYear());
+    setCurrentWeekStart(getStartOfWeek(now));
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Header />
       <main className="container mx-auto px-4 py-6 space-y-6">
+        <MonthYearFilter
+          selectedMonth={selectedMonth}
+          selectedYear={selectedYear}
+          onMonthChange={handleMonthChange}
+          onYearChange={handleYearChange}
+          onReset={handleResetFilter}
+        />
         <StatsCards
           teachers={teachers}
           mealRecords={mealRecords}
-          currentMonth={currentMonth}
-          currentYear={currentYear}
+          currentMonth={selectedMonth}
+          currentYear={selectedYear}
           getMonthlyTotal={getMonthlyTotal}
         />
 
@@ -64,8 +95,8 @@ const Index = () => {
             />
             <MonthlySummary
               teachers={teachers}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
+              currentMonth={selectedMonth}
+              currentYear={selectedYear}
               getTeacherMonthlyTotal={getTeacherMonthlyTotal}
               getMonthlyTotal={getMonthlyTotal}
             />
