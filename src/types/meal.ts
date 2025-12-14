@@ -1,4 +1,12 @@
-export type TeacherRole = 'kepala_sekolah' | 'guru';
+export type TeacherRole = 'kepala_sekolah' | 'guru' | 'tendik' | 'nakes' | 'kepala_komite';
+
+export const ROLE_LABELS: Record<TeacherRole, string> = {
+  kepala_sekolah: 'Kepala Sekolah',
+  guru: 'Guru',
+  tendik: 'Tendik',
+  nakes: 'Nakes',
+  kepala_komite: 'Kepala Komite',
+};
 
 export type MealType = 'pagi' | 'siang' | 'pagi_siang';
 
