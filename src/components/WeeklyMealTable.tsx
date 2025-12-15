@@ -45,6 +45,11 @@ export function WeeklyMealTable({
   );
 
   const exportToPDF = () => {
+    if (teachers.length === 0) {
+      alert('Tidak ada data guru untuk di-export. Tambahkan guru terlebih dahulu.');
+      return;
+    }
+
     const doc = new jsPDF('landscape');
     const monthName = getMonthName(weekStart.getMonth() + 1);
     const year = weekStart.getFullYear();
@@ -53,17 +58,17 @@ export function WeeklyMealTable({
     doc.setFontSize(16);
     doc.text(`Data Makan Mingguan - Minggu ke-${weekNumber}`, 14, 15);
     doc.setFontSize(12);
-    doc.text(`${monthName} ${year} • ${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`, 14, 22);
+    doc.text(`${monthName} ${year} | ${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`, 14, 22);
 
     // Table data
     const tableData = teachers.map((teacher) => {
-      const row: (string | number)[] = [teacher.name, ROLE_LABELS[teacher.role]];
+      const row: string[] = [teacher.name, ROLE_LABELS[teacher.role]];
       let teacherTotal = 0;
 
       weekDates.forEach((date) => {
         const record = getMealRecord(teacher.id, date);
         if (record) {
-          row.push('✓');
+          row.push('V');
           teacherTotal += record.cost;
         } else {
           row.push('-');
