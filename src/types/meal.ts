@@ -8,7 +8,7 @@ export const ROLE_LABELS: Record<TeacherRole, string> = {
   kepala_komite: 'Kepala Komite',
 };
 
-export type MealType = 'pagi' | 'siang' | 'pagi_siang';
+export type MealType = 'siang';
 
 export interface Teacher {
   id: string;
@@ -36,9 +36,7 @@ export interface WeeklyMealData {
 }
 
 export const MEAL_PRICES = {
-  pagi: 10000,
   siang: 10000,
-  pagi_siang: 20000,
 } as const;
 
 export const DAYS_OF_WEEK = [
