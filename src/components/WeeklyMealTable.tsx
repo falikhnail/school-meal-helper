@@ -20,7 +20,7 @@ interface WeeklyMealTableProps {
   weekStart: Date;
   onWeekChange: (direction: 'prev' | 'next') => void;
   getMealRecord: (teacherId: string, date: Date) => MealRecord | undefined;
-  setMealRecord: (teacherId: string, date: Date, mealType: MealType | null) => void;
+  setMealRecord: (teacherId: string, date: Date, mealType: MealType | null) => Promise<void>;
   getWeekRecords: (weekStart: Date) => MealRecord[];
 }
 

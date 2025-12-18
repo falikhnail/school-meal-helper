@@ -14,7 +14,59 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      meal_records: {
+        Row: {
+          created_at: string
+          date: string
+          id: string
+          meal_type: string
+          teacher_id: string
+        }
+        Insert: {
+          created_at?: string
+          date: string
+          id?: string
+          meal_type: string
+          teacher_id: string
+        }
+        Update: {
+          created_at?: string
+          date?: string
+          id?: string
+          meal_type?: string
+          teacher_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_records_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      teachers: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          role?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

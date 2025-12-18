@@ -1,59 +1,143 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Teacher, MealRecord, MealType, MEAL_PRICES } from '@/types/meal';
 import { getWeekNumber, getStartOfWeek, formatDateKey } from '@/lib/dateUtils';
-
-const TEACHERS_STORAGE_KEY = 'meal-tracker-teachers';
-const RECORDS_STORAGE_KEY = 'meal-tracker-records';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 
 export function useMealTracker() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [mealRecords, setMealRecords] = useState<MealRecord[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Load from localStorage on mount
+  // Load data from database on mount
   useEffect(() => {
-    const savedTeachers = localStorage.getItem(TEACHERS_STORAGE_KEY);
-    const savedRecords = localStorage.getItem(RECORDS_STORAGE_KEY);
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        // Load teachers
+        const { data: teachersData, error: teachersError } = await supabase
+          .from('teachers')
+          .select('*')
+          .order('created_at', { ascending: true });
 
-    if (savedTeachers) {
-      setTeachers(JSON.parse(savedTeachers));
-    }
-    if (savedRecords) {
-      setMealRecords(JSON.parse(savedRecords));
-    }
-  }, []);
+        if (teachersError) throw teachersError;
 
-  // Save to localStorage when data changes
-  useEffect(() => {
-    localStorage.setItem(TEACHERS_STORAGE_KEY, JSON.stringify(teachers));
-  }, [teachers]);
+        const formattedTeachers: Teacher[] = (teachersData || []).map((t) => ({
+          id: t.id,
+          name: t.name,
+          role: t.role as Teacher['role'],
+        }));
+        setTeachers(formattedTeachers);
 
-  useEffect(() => {
-    localStorage.setItem(RECORDS_STORAGE_KEY, JSON.stringify(mealRecords));
-  }, [mealRecords]);
+        // Load meal records
+        const { data: recordsData, error: recordsError } = await supabase
+          .from('meal_records')
+          .select('*');
 
-  const addTeacher = useCallback((name: string, role: Teacher['role']) => {
-    const newTeacher: Teacher = {
-      id: crypto.randomUUID(),
-      name,
-      role,
+        if (recordsError) throw recordsError;
+
+        const formattedRecords: MealRecord[] = (recordsData || []).map((r) => {
+          const date = new Date(r.date);
+          return {
+            id: r.id,
+            teacherId: r.teacher_id,
+            date: r.date,
+            mealType: r.meal_type as MealType,
+            week: getWeekNumber(date),
+            month: date.getMonth() + 1,
+            year: date.getFullYear(),
+            cost: MEAL_PRICES[r.meal_type as MealType],
+          };
+        });
+        setMealRecords(formattedRecords);
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast({
+          title: 'Error',
+          description: 'Gagal memuat data dari database',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
     };
-    setTeachers((prev) => [...prev, newTeacher]);
-    return newTeacher;
+
+    loadData();
   }, []);
 
-  const removeTeacher = useCallback((teacherId: string) => {
-    setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
-    setMealRecords((prev) => prev.filter((r) => r.teacherId !== teacherId));
+  const addTeacher = useCallback(async (name: string, role: Teacher['role']) => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .insert({ name, role })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newTeacher: Teacher = {
+        id: data.id,
+        name: data.name,
+        role: data.role as Teacher['role'],
+      };
+      setTeachers((prev) => [...prev, newTeacher]);
+      return newTeacher;
+    } catch (error) {
+      console.error('Error adding teacher:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menambahkan guru',
+        variant: 'destructive',
+      });
+      return null;
+    }
   }, []);
 
-  const updateTeacher = useCallback((teacherId: string, updates: Partial<Omit<Teacher, 'id'>>) => {
-    setTeachers((prev) =>
-      prev.map((t) => (t.id === teacherId ? { ...t, ...updates } : t))
-    );
+  const removeTeacher = useCallback(async (teacherId: string) => {
+    try {
+      const { error } = await supabase
+        .from('teachers')
+        .delete()
+        .eq('id', teacherId);
+
+      if (error) throw error;
+
+      setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
+      setMealRecords((prev) => prev.filter((r) => r.teacherId !== teacherId));
+    } catch (error) {
+      console.error('Error removing teacher:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menghapus guru',
+        variant: 'destructive',
+      });
+    }
   }, []);
 
-  const setMealRecord = useCallback((
+  const updateTeacher = useCallback(async (teacherId: string, updates: Partial<Omit<Teacher, 'id'>>) => {
+    try {
+      const { error } = await supabase
+        .from('teachers')
+        .update(updates)
+        .eq('id', teacherId);
+
+      if (error) throw error;
+
+      setTeachers((prev) =>
+        prev.map((t) => (t.id === teacherId ? { ...t, ...updates } : t))
+      );
+    } catch (error) {
+      console.error('Error updating teacher:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal mengupdate guru',
+        variant: 'destructive',
+      });
+    }
+  }, []);
+
+  const setMealRecord = useCallback(async (
     teacherId: string,
     date: Date,
     mealType: MealType | null
@@ -63,31 +147,59 @@ export function useMealTracker() {
     const month = date.getMonth() + 1;
     const year = date.getFullYear();
 
-    setMealRecords((prev) => {
-      // Remove existing record for this teacher and date
-      const filtered = prev.filter(
-        (r) => !(r.teacherId === teacherId && r.date === dateKey)
-      );
-
-      // If mealType is null, just remove the record
+    try {
       if (!mealType) {
-        return filtered;
+        // Delete existing record
+        const { error } = await supabase
+          .from('meal_records')
+          .delete()
+          .eq('teacher_id', teacherId)
+          .eq('date', dateKey);
+
+        if (error) throw error;
+
+        setMealRecords((prev) =>
+          prev.filter((r) => !(r.teacherId === teacherId && r.date === dateKey))
+        );
+      } else {
+        // Upsert record
+        const { data, error } = await supabase
+          .from('meal_records')
+          .upsert(
+            { teacher_id: teacherId, date: dateKey, meal_type: mealType },
+            { onConflict: 'teacher_id,date' }
+          )
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const newRecord: MealRecord = {
+          id: data.id,
+          teacherId,
+          date: dateKey,
+          mealType,
+          week,
+          month,
+          year,
+          cost: MEAL_PRICES[mealType],
+        };
+
+        setMealRecords((prev) => {
+          const filtered = prev.filter(
+            (r) => !(r.teacherId === teacherId && r.date === dateKey)
+          );
+          return [...filtered, newRecord];
+        });
       }
-
-      // Add new record
-      const newRecord: MealRecord = {
-        id: crypto.randomUUID(),
-        teacherId,
-        date: dateKey,
-        mealType,
-        week,
-        month,
-        year,
-        cost: MEAL_PRICES[mealType],
-      };
-
-      return [...filtered, newRecord];
-    });
+    } catch (error) {
+      console.error('Error setting meal record:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menyimpan catatan makan',
+        variant: 'destructive',
+      });
+    }
   }, []);
 
   const getMealRecord = useCallback((teacherId: string, date: Date): MealRecord | undefined => {
@@ -128,6 +240,7 @@ export function useMealTracker() {
     mealRecords,
     selectedDate,
     setSelectedDate,
+    isLoading,
     addTeacher,
     removeTeacher,
     updateTeacher,
