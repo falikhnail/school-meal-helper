@@ -35,6 +35,16 @@ export interface WeeklyMealData {
   totalCost: number;
 }
 
+export interface WeeklyPayment {
+  id: string;
+  teacherId: string;
+  weekNumber: number;
+  year: number;
+  amount: number;
+  isPaid: boolean;
+  paidAt?: Date;
+}
+
 export const MEAL_PRICES = {
   siang: 10000,
 } as const;
