@@ -22,8 +22,8 @@ import { toast } from 'sonner';
 
 interface TeacherManagerProps {
   teachers: Teacher[];
-  addTeacher: (name: string, role: TeacherRole) => Teacher;
-  removeTeacher: (id: string) => void;
+  addTeacher: (name: string, role: TeacherRole) => Promise<Teacher | null>;
+  removeTeacher: (id: string) => Promise<void>;
 }
 
 const getRoleIcon = (role: TeacherRole) => {
@@ -61,21 +61,23 @@ export function TeacherManager({ teachers, addTeacher, removeTeacher }: TeacherM
   const [name, setName] = useState('');
   const [role, setRole] = useState<TeacherRole>('guru');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
       toast.error('Nama guru tidak boleh kosong');
       return;
     }
-    addTeacher(name.trim(), role);
-    toast.success(`${name} berhasil ditambahkan`);
-    setName('');
-    setRole('guru');
-    setIsOpen(false);
+    const result = await addTeacher(name.trim(), role);
+    if (result) {
+      toast.success(`${name} berhasil ditambahkan`);
+      setName('');
+      setRole('guru');
+      setIsOpen(false);
+    }
   };
 
-  const handleRemove = (teacher: Teacher) => {
-    removeTeacher(teacher.id);
+  const handleRemove = async (teacher: Teacher) => {
+    await removeTeacher(teacher.id);
     toast.success(`${teacher.name} berhasil dihapus`);
   };
 

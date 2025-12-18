@@ -12,6 +12,7 @@ const Index = () => {
   const {
     teachers,
     mealRecords,
+    isLoading,
     addTeacher,
     removeTeacher,
     setMealRecord,
@@ -56,6 +57,22 @@ const Index = () => {
     setSelectedYear(now.getFullYear());
     setCurrentWeekStart(getStartOfWeek(now));
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-6">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Memuat data...</p>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
