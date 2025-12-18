@@ -67,6 +67,47 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_paid: boolean
+          paid_at: string | null
+          teacher_id: string
+          week_number: number
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          paid_at?: string | null
+          teacher_id: string
+          week_number: number
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          paid_at?: string | null
+          teacher_id?: string
+          week_number?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_payments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

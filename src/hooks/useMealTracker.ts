@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Teacher, MealRecord, MealType, MEAL_PRICES } from '@/types/meal';
+import { Teacher, MealRecord, MealType, MEAL_PRICES, WeeklyPayment } from '@/types/meal';
 import { getWeekNumber, getStartOfWeek, formatDateKey } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,6 +7,7 @@ import { toast } from '@/hooks/use-toast';
 export function useMealTracker() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [mealRecords, setMealRecords] = useState<MealRecord[]>([]);
+  const [weeklyPayments, setWeeklyPayments] = useState<WeeklyPayment[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
 
@@ -51,6 +52,24 @@ export function useMealTracker() {
           };
         });
         setMealRecords(formattedRecords);
+
+        // Load weekly payments
+        const { data: paymentsData, error: paymentsError } = await supabase
+          .from('weekly_payments')
+          .select('*');
+
+        if (paymentsError) throw paymentsError;
+
+        const formattedPayments: WeeklyPayment[] = (paymentsData || []).map((p) => ({
+          id: p.id,
+          teacherId: p.teacher_id,
+          weekNumber: p.week_number,
+          year: p.year,
+          amount: p.amount,
+          isPaid: p.is_paid,
+          paidAt: p.paid_at ? new Date(p.paid_at) : undefined,
+        }));
+        setWeeklyPayments(formattedPayments);
       } catch (error) {
         console.error('Error loading data:', error);
         toast({
@@ -105,6 +124,7 @@ export function useMealTracker() {
 
       setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
       setMealRecords((prev) => prev.filter((r) => r.teacherId !== teacherId));
+      setWeeklyPayments((prev) => prev.filter((p) => p.teacherId !== teacherId));
     } catch (error) {
       console.error('Error removing teacher:', error);
       toast({
@@ -235,9 +255,86 @@ export function useMealTracker() {
     return getStartOfWeek(selectedDate);
   }, [selectedDate]);
 
+  // Payment functions
+  const getWeeklyPayment = useCallback((teacherId: string, weekNumber: number, year: number): WeeklyPayment | undefined => {
+    return weeklyPayments.find(
+      (p) => p.teacherId === teacherId && p.weekNumber === weekNumber && p.year === year
+    );
+  }, [weeklyPayments]);
+
+  const setWeeklyPaymentStatus = useCallback(async (
+    teacherId: string,
+    weekNumber: number,
+    year: number,
+    amount: number,
+    isPaid: boolean
+  ) => {
+    try {
+      const { data, error } = await supabase
+        .from('weekly_payments')
+        .upsert(
+          {
+            teacher_id: teacherId,
+            week_number: weekNumber,
+            year: year,
+            amount: amount,
+            is_paid: isPaid,
+            paid_at: isPaid ? new Date().toISOString() : null,
+          },
+          { onConflict: 'teacher_id,week_number,year' }
+        )
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newPayment: WeeklyPayment = {
+        id: data.id,
+        teacherId: data.teacher_id,
+        weekNumber: data.week_number,
+        year: data.year,
+        amount: data.amount,
+        isPaid: data.is_paid,
+        paidAt: data.paid_at ? new Date(data.paid_at) : undefined,
+      };
+
+      setWeeklyPayments((prev) => {
+        const filtered = prev.filter(
+          (p) => !(p.teacherId === teacherId && p.weekNumber === weekNumber && p.year === year)
+        );
+        return [...filtered, newPayment];
+      });
+
+      toast({
+        title: 'Berhasil',
+        description: isPaid ? 'Status pembayaran diperbarui: Lunas' : 'Status pembayaran diperbarui: Belum Lunas',
+      });
+    } catch (error) {
+      console.error('Error setting payment status:', error);
+      toast({
+        title: 'Error',
+        description: 'Gagal menyimpan status pembayaran',
+        variant: 'destructive',
+      });
+    }
+  }, []);
+
+  const getTeacherWeeklyTotal = useCallback((teacherId: string, weekStart: Date) => {
+    const weekDates: string[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + i);
+      weekDates.push(formatDateKey(date));
+    }
+    return mealRecords
+      .filter((r) => r.teacherId === teacherId && weekDates.includes(r.date))
+      .reduce((sum, r) => sum + r.cost, 0);
+  }, [mealRecords]);
+
   return {
     teachers,
     mealRecords,
+    weeklyPayments,
     selectedDate,
     setSelectedDate,
     isLoading,
@@ -250,5 +347,8 @@ export function useMealTracker() {
     getMonthlyTotal,
     getTeacherMonthlyTotal,
     getCurrentWeekStart,
+    getWeeklyPayment,
+    setWeeklyPaymentStatus,
+    getTeacherWeeklyTotal,
   };
 }

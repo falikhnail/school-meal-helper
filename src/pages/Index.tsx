@@ -20,6 +20,9 @@ const Index = () => {
     getWeekRecords,
     getMonthlyTotal,
     getTeacherMonthlyTotal,
+    getWeeklyPayment,
+    setWeeklyPaymentStatus,
+    getTeacherWeeklyTotal,
   } = useMealTracker();
 
   const today = new Date();
@@ -102,6 +105,9 @@ const Index = () => {
               getMealRecord={getMealRecord}
               setMealRecord={setMealRecord}
               getWeekRecords={getWeekRecords}
+              getWeeklyPayment={getWeeklyPayment}
+              setWeeklyPaymentStatus={setWeeklyPaymentStatus}
+              getTeacherWeeklyTotal={getTeacherWeeklyTotal}
             />
           </div>
           <div className="space-y-6">

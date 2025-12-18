@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Sun, Search, FileDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Search, FileDown, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Teacher, MealRecord, MealType, DAYS_OF_WEEK, MEAL_PRICES, ROLE_LABELS } from '@/types/meal';
+import { Badge } from '@/components/ui/badge';
+import { Teacher, MealRecord, MealType, DAYS_OF_WEEK, MEAL_PRICES, ROLE_LABELS, WeeklyPayment } from '@/types/meal';
 import {
   getWeekDates,
   getWeekNumber,
@@ -22,6 +23,9 @@ interface WeeklyMealTableProps {
   getMealRecord: (teacherId: string, date: Date) => MealRecord | undefined;
   setMealRecord: (teacherId: string, date: Date, mealType: MealType | null) => Promise<void>;
   getWeekRecords: (weekStart: Date) => MealRecord[];
+  getWeeklyPayment: (teacherId: string, weekNumber: number, year: number) => WeeklyPayment | undefined;
+  setWeeklyPaymentStatus: (teacherId: string, weekNumber: number, year: number, amount: number, isPaid: boolean) => Promise<void>;
+  getTeacherWeeklyTotal: (teacherId: string, weekStart: Date) => number;
 }
 
 export function WeeklyMealTable({
@@ -31,10 +35,14 @@ export function WeeklyMealTable({
   getMealRecord,
   setMealRecord,
   getWeekRecords,
+  getWeeklyPayment,
+  setWeeklyPaymentStatus,
+  getTeacherWeeklyTotal,
 }: WeeklyMealTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const weekDates = getWeekDates(weekStart);
   const weekNumber = getWeekNumber(weekStart);
+  const weekYear = weekStart.getFullYear();
   const weekRecords = getWeekRecords(weekStart);
   const weekTotal = weekRecords.reduce((sum, r) => sum + r.cost, 0);
 
@@ -43,6 +51,13 @@ export function WeeklyMealTable({
       teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ROLE_LABELS[teacher.role].toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const handlePaymentToggle = async (teacher: Teacher) => {
+    const total = getTeacherWeeklyTotal(teacher.id, weekStart);
+    const currentPayment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+    const newIsPaid = !currentPayment?.isPaid;
+    await setWeeklyPaymentStatus(teacher.id, weekNumber, weekYear, total, newIsPaid);
+  };
 
   const exportToPDF = () => {
     if (teachers.length === 0) {
@@ -76,6 +91,10 @@ export function WeeklyMealTable({
       });
 
       row.push(formatCurrency(teacherTotal));
+      
+      const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+      row.push(payment?.isPaid ? 'Lunas' : 'Belum');
+      
       return row;
     });
 
@@ -85,6 +104,7 @@ export function WeeklyMealTable({
       'Keterangan',
       ...DAYS_OF_WEEK.map((day, i) => `${day}\n${formatDate(weekDates[i])}`),
       'Total',
+      'Status',
     ];
 
     autoTable(doc, {
@@ -94,18 +114,31 @@ export function WeeklyMealTable({
       styles: { fontSize: 9, cellPadding: 3 },
       headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 40 },
-        1: { cellWidth: 30 },
+        0: { cellWidth: 35 },
+        1: { cellWidth: 25 },
         9: { halign: 'right', fontStyle: 'bold' },
+        10: { halign: 'center' },
       },
       foot: [[
         { content: 'Total Minggu Ini:', colSpan: 9, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: formatCurrency(weekTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '', styles: {} },
       ]],
     });
 
     doc.save(`data-makan-minggu-${weekNumber}-${monthName}-${year}.pdf`);
   };
+
+  // Calculate paid and unpaid totals
+  const paidTotal = filteredTeachers.reduce((sum, teacher) => {
+    const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+    if (payment?.isPaid) {
+      return sum + getTeacherWeeklyTotal(teacher.id, weekStart);
+    }
+    return sum;
+  }, 0);
+
+  const unpaidTotal = weekTotal - paidTotal;
 
   return (
     <Card className="border-border/50">
@@ -171,10 +204,10 @@ export function WeeklyMealTable({
         ) : (
           <>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full min-w-[700px]">
+              <table className="w-full min-w-[800px]">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground w-[150px]">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground w-[140px]">
                       Nama
                     </th>
                     {weekDates.map((date, index) => (
@@ -186,17 +219,19 @@ export function WeeklyMealTable({
                         <div className="text-xs font-normal">{formatDate(date)}</div>
                       </th>
                     ))}
-                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground w-[100px]">
+                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground w-[90px]">
                       Total
+                    </th>
+                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground w-[100px]">
+                      Status
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTeachers.map((teacher) => {
-                    const teacherWeekTotal = weekDates.reduce((sum, date) => {
-                      const record = getMealRecord(teacher.id, date);
-                      return sum + (record?.cost || 0);
-                    }, 0);
+                    const teacherWeekTotal = getTeacherWeeklyTotal(teacher.id, weekStart);
+                    const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+                    const isPaid = payment?.isPaid || false;
 
                     return (
                       <tr key={teacher.id} className="border-b border-border/50 hover:bg-muted/30">
@@ -232,6 +267,30 @@ export function WeeklyMealTable({
                             {formatCurrency(teacherWeekTotal)}
                           </span>
                         </td>
+                        <td className="py-3 px-2 text-center">
+                          {teacherWeekTotal > 0 ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handlePaymentToggle(teacher)}
+                              className={`h-7 px-2 ${isPaid ? 'text-green-600 hover:text-green-700' : 'text-orange-500 hover:text-orange-600'}`}
+                            >
+                              {isPaid ? (
+                                <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                                  <Check className="w-3 h-3 mr-1" />
+                                  Lunas
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-orange-500/10 text-orange-500 border-orange-500/30">
+                                  <X className="w-3 h-3 mr-1" />
+                                  Belum
+                                </Badge>
+                              )}
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
@@ -246,6 +305,12 @@ export function WeeklyMealTable({
                         {formatCurrency(weekTotal)}
                       </span>
                     </td>
+                    <td className="py-3 px-2 text-center">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs text-green-600">Lunas: {formatCurrency(paidTotal)}</span>
+                        <span className="text-xs text-orange-500">Belum: {formatCurrency(unpaidTotal)}</span>
+                      </div>
+                    </td>
                   </tr>
                 </tfoot>
               </table>
@@ -254,6 +319,10 @@ export function WeeklyMealTable({
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <Sun className="w-3 h-3 text-primary" />
                 <span>Siang = {formatCurrency(MEAL_PRICES.siang)}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Check className="w-3 h-3 text-green-600" />
+                <span>Klik status untuk mengubah</span>
               </div>
             </div>
           </>
