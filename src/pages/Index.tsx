@@ -1,12 +1,11 @@
 import { Header } from '@/components/Header';
 import { StatsCards } from '@/components/StatsCards';
 import { TeacherManager } from '@/components/TeacherManager';
-import { WeeklyMealTable } from '@/components/WeeklyMealTable';
+import { MonthlyMealTable } from '@/components/MonthlyMealTable';
 import { MonthlySummary } from '@/components/MonthlySummary';
 import { MonthYearFilter } from '@/components/MonthYearFilter';
 import { useMealTracker } from '@/hooks/useMealTracker';
-import { getStartOfWeek } from '@/lib/dateUtils';
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 
 const Index = () => {
   const {
@@ -17,48 +16,29 @@ const Index = () => {
     removeTeacher,
     setMealRecord,
     getMealRecord,
-    getWeekRecords,
+    getMonthRecords,
     getMonthlyTotal,
     getTeacherMonthlyTotal,
-    getWeeklyPayment,
-    setWeeklyPaymentStatus,
-    getTeacherWeeklyTotal,
+    getMonthlyPayment,
+    setMonthlyPaymentStatus,
   } = useMealTracker();
 
   const today = new Date();
   const [selectedMonth, setSelectedMonth] = useState<number>(today.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState<number>(today.getFullYear());
-  
-  const getFirstWeekOfMonth = useCallback((month: number, year: number) => {
-    const firstDay = new Date(year, month - 1, 1);
-    return getStartOfWeek(firstDay);
-  }, []);
-
-  const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getStartOfWeek(today));
-
-  const handleWeekChange = (direction: 'prev' | 'next') => {
-    setCurrentWeekStart((prev) => {
-      const newDate = new Date(prev);
-      newDate.setDate(newDate.getDate() + (direction === 'next' ? 7 : -7));
-      return newDate;
-    });
-  };
 
   const handleMonthChange = (month: number) => {
     setSelectedMonth(month);
-    setCurrentWeekStart(getFirstWeekOfMonth(month, selectedYear));
   };
 
   const handleYearChange = (year: number) => {
     setSelectedYear(year);
-    setCurrentWeekStart(getFirstWeekOfMonth(selectedMonth, year));
   };
 
   const handleResetFilter = () => {
     const now = new Date();
     setSelectedMonth(now.getMonth() + 1);
     setSelectedYear(now.getFullYear());
-    setCurrentWeekStart(getStartOfWeek(now));
   };
 
   if (isLoading) {
@@ -98,16 +78,16 @@ const Index = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <WeeklyMealTable
+            <MonthlyMealTable
               teachers={teachers}
-              weekStart={currentWeekStart}
-              onWeekChange={handleWeekChange}
+              month={selectedMonth}
+              year={selectedYear}
               getMealRecord={getMealRecord}
               setMealRecord={setMealRecord}
-              getWeekRecords={getWeekRecords}
-              getWeeklyPayment={getWeeklyPayment}
-              setWeeklyPaymentStatus={setWeeklyPaymentStatus}
-              getTeacherWeeklyTotal={getTeacherWeeklyTotal}
+              getMonthRecords={getMonthRecords}
+              getMonthlyPayment={getMonthlyPayment}
+              setMonthlyPaymentStatus={setMonthlyPaymentStatus}
+              getTeacherMonthlyTotal={getTeacherMonthlyTotal}
             />
           </div>
           <div className="space-y-6">

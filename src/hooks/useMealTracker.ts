@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Teacher, MealRecord, MealType, MEAL_PRICES, WeeklyPayment } from '@/types/meal';
+import { Teacher, MealRecord, MealType, MEAL_PRICES, MonthlyPayment } from '@/types/meal';
 import { getWeekNumber, getStartOfWeek, formatDateKey } from '@/lib/dateUtils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -7,7 +7,7 @@ import { toast } from '@/hooks/use-toast';
 export function useMealTracker() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [mealRecords, setMealRecords] = useState<MealRecord[]>([]);
-  const [weeklyPayments, setWeeklyPayments] = useState<WeeklyPayment[]>([]);
+  const [monthlyPayments, setMonthlyPayments] = useState<MonthlyPayment[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [isLoading, setIsLoading] = useState(true);
 
@@ -53,23 +53,23 @@ export function useMealTracker() {
         });
         setMealRecords(formattedRecords);
 
-        // Load weekly payments
+        // Load monthly payments
         const { data: paymentsData, error: paymentsError } = await supabase
-          .from('weekly_payments')
+          .from('monthly_payments')
           .select('*');
 
-        if (paymentsError) throw paymentsError;
+        if (paymentsError && paymentsError.code !== 'PGRST116') throw paymentsError;
 
-        const formattedPayments: WeeklyPayment[] = (paymentsData || []).map((p) => ({
+        const formattedPayments: MonthlyPayment[] = (paymentsData || []).map((p) => ({
           id: p.id,
           teacherId: p.teacher_id,
-          weekNumber: p.week_number,
+          month: p.month,
           year: p.year,
           amount: p.amount,
           isPaid: p.is_paid,
           paidAt: p.paid_at ? new Date(p.paid_at) : undefined,
         }));
-        setWeeklyPayments(formattedPayments);
+        setMonthlyPayments(formattedPayments);
       } catch (error) {
         console.error('Error loading data:', error);
         toast({
@@ -124,7 +124,7 @@ export function useMealTracker() {
 
       setTeachers((prev) => prev.filter((t) => t.id !== teacherId));
       setMealRecords((prev) => prev.filter((r) => r.teacherId !== teacherId));
-      setWeeklyPayments((prev) => prev.filter((p) => p.teacherId !== teacherId));
+      setMonthlyPayments((prev) => prev.filter((p) => p.teacherId !== teacherId));
     } catch (error) {
       console.error('Error removing teacher:', error);
       toast({
@@ -255,52 +255,57 @@ export function useMealTracker() {
     return getStartOfWeek(selectedDate);
   }, [selectedDate]);
 
-  // Payment functions
-  const getWeeklyPayment = useCallback((teacherId: string, weekNumber: number, year: number): WeeklyPayment | undefined => {
-    return weeklyPayments.find(
-      (p) => p.teacherId === teacherId && p.weekNumber === weekNumber && p.year === year
-    );
-  }, [weeklyPayments]);
+  // Get records for a specific month
+  const getMonthRecords = useCallback((month: number, year: number) => {
+    return mealRecords.filter((r) => r.month === month && r.year === year);
+  }, [mealRecords]);
 
-  const setWeeklyPaymentStatus = useCallback(async (
+  // Payment functions
+  const getMonthlyPayment = useCallback((teacherId: string, month: number, year: number): MonthlyPayment | undefined => {
+    return monthlyPayments.find(
+      (p) => p.teacherId === teacherId && p.month === month && p.year === year
+    );
+  }, [monthlyPayments]);
+
+  const setMonthlyPaymentStatus = useCallback(async (
     teacherId: string,
-    weekNumber: number,
+    month: number,
     year: number,
     amount: number,
     isPaid: boolean
   ) => {
     try {
       const { data, error } = await supabase
-        .from('weekly_payments')
+        .from('monthly_payments')
         .upsert(
           {
             teacher_id: teacherId,
-            week_number: weekNumber,
+            month: month,
             year: year,
             amount: amount,
             is_paid: isPaid,
             paid_at: isPaid ? new Date().toISOString() : null,
           },
-          { onConflict: 'teacher_id,week_number,year' }
+          { onConflict: 'teacher_id,month,year' }
         )
         .select()
         .single();
 
       if (error) throw error;
 
-      const newPayment: WeeklyPayment = {
+      const newPayment: MonthlyPayment = {
         id: data.id,
         teacherId: data.teacher_id,
-        weekNumber: data.week_number,
+        month: data.month,
         year: data.year,
         amount: data.amount,
         isPaid: data.is_paid,
         paidAt: data.paid_at ? new Date(data.paid_at) : undefined,
       };
 
-      setWeeklyPayments((prev) => {
+      setMonthlyPayments((prev) => {
         const filtered = prev.filter(
-          (p) => !(p.teacherId === teacherId && p.weekNumber === weekNumber && p.year === year)
+          (p) => !(p.teacherId === teacherId && p.month === month && p.year === year)
         );
         return [...filtered, newPayment];
       });
@@ -319,22 +324,10 @@ export function useMealTracker() {
     }
   }, []);
 
-  const getTeacherWeeklyTotal = useCallback((teacherId: string, weekStart: Date) => {
-    const weekDates: string[] = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(weekStart);
-      date.setDate(date.getDate() + i);
-      weekDates.push(formatDateKey(date));
-    }
-    return mealRecords
-      .filter((r) => r.teacherId === teacherId && weekDates.includes(r.date))
-      .reduce((sum, r) => sum + r.cost, 0);
-  }, [mealRecords]);
-
   return {
     teachers,
     mealRecords,
-    weeklyPayments,
+    monthlyPayments,
     selectedDate,
     setSelectedDate,
     isLoading,
@@ -344,11 +337,11 @@ export function useMealTracker() {
     setMealRecord,
     getMealRecord,
     getWeekRecords,
+    getMonthRecords,
     getMonthlyTotal,
     getTeacherMonthlyTotal,
     getCurrentWeekStart,
-    getWeeklyPayment,
-    setWeeklyPaymentStatus,
-    getTeacherWeeklyTotal,
+    getMonthlyPayment,
+    setMonthlyPaymentStatus,
   };
 }

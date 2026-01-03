@@ -1,50 +1,57 @@
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Sun, Search, FileDown, Check, X } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Teacher, MealRecord, MealType, DAYS_OF_WEEK, MEAL_PRICES, ROLE_LABELS, WeeklyPayment } from '@/types/meal';
+import { Teacher, MealRecord, MealType, MEAL_PRICES, ROLE_LABELS } from '@/types/meal';
 import {
-  getWeekDates,
-  getWeekNumber,
-  formatDate,
+  getMonthDates,
+  formatDateKey,
   formatCurrency,
   getMonthName,
 } from '@/lib/dateUtils';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
-interface WeeklyMealTableProps {
-  teachers: Teacher[];
-  weekStart: Date;
-  onWeekChange: (direction: 'prev' | 'next') => void;
-  getMealRecord: (teacherId: string, date: Date) => MealRecord | undefined;
-  setMealRecord: (teacherId: string, date: Date, mealType: MealType | null) => Promise<void>;
-  getWeekRecords: (weekStart: Date) => MealRecord[];
-  getWeeklyPayment: (teacherId: string, weekNumber: number, year: number) => WeeklyPayment | undefined;
-  setWeeklyPaymentStatus: (teacherId: string, weekNumber: number, year: number, amount: number, isPaid: boolean) => Promise<void>;
-  getTeacherWeeklyTotal: (teacherId: string, weekStart: Date) => number;
+interface MonthlyPayment {
+  id: string;
+  teacherId: string;
+  month: number;
+  year: number;
+  amount: number;
+  isPaid: boolean;
+  paidAt?: Date;
 }
 
-export function WeeklyMealTable({
+interface MonthlyMealTableProps {
+  teachers: Teacher[];
+  month: number;
+  year: number;
+  getMealRecord: (teacherId: string, date: Date) => MealRecord | undefined;
+  setMealRecord: (teacherId: string, date: Date, mealType: MealType | null) => Promise<void>;
+  getMonthRecords: (month: number, year: number) => MealRecord[];
+  getMonthlyPayment: (teacherId: string, month: number, year: number) => MonthlyPayment | undefined;
+  setMonthlyPaymentStatus: (teacherId: string, month: number, year: number, amount: number, isPaid: boolean) => Promise<void>;
+  getTeacherMonthlyTotal: (teacherId: string, month: number, year: number) => number;
+}
+
+export function MonthlyMealTable({
   teachers,
-  weekStart,
-  onWeekChange,
+  month,
+  year,
   getMealRecord,
   setMealRecord,
-  getWeekRecords,
-  getWeeklyPayment,
-  setWeeklyPaymentStatus,
-  getTeacherWeeklyTotal,
-}: WeeklyMealTableProps) {
+  getMonthRecords,
+  getMonthlyPayment,
+  setMonthlyPaymentStatus,
+  getTeacherMonthlyTotal,
+}: MonthlyMealTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const weekDates = getWeekDates(weekStart);
-  const weekNumber = getWeekNumber(weekStart);
-  const weekYear = weekStart.getFullYear();
-  const weekRecords = getWeekRecords(weekStart);
-  const weekTotal = weekRecords.reduce((sum, r) => sum + r.cost, 0);
+  const monthDates = getMonthDates(month, year);
+  const monthRecords = getMonthRecords(month, year);
+  const monthTotal = monthRecords.reduce((sum, r) => sum + r.cost, 0);
 
   const filteredTeachers = teachers.filter(
     (teacher) =>
@@ -53,10 +60,10 @@ export function WeeklyMealTable({
   );
 
   const handlePaymentToggle = async (teacher: Teacher) => {
-    const total = getTeacherWeeklyTotal(teacher.id, weekStart);
-    const currentPayment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+    const total = getTeacherMonthlyTotal(teacher.id, month, year);
+    const currentPayment = getMonthlyPayment(teacher.id, month, year);
     const newIsPaid = !currentPayment?.isPaid;
-    await setWeeklyPaymentStatus(teacher.id, weekNumber, weekYear, total, newIsPaid);
+    await setMonthlyPaymentStatus(teacher.id, month, year, total, newIsPaid);
   };
 
   const exportToPDF = () => {
@@ -66,79 +73,62 @@ export function WeeklyMealTable({
     }
 
     const doc = new jsPDF('landscape');
-    const monthName = getMonthName(weekStart.getMonth() + 1);
-    const year = weekStart.getFullYear();
+    const monthName = getMonthName(month);
 
     // Title
     doc.setFontSize(16);
-    doc.text(`Data Makan Mingguan - Minggu ke-${weekNumber}`, 14, 15);
-    doc.setFontSize(12);
-    doc.text(`${monthName} ${year} | ${formatDate(weekDates[0])} - ${formatDate(weekDates[6])}`, 14, 22);
+    doc.text(`Data Makan Bulanan - ${monthName} ${year}`, 14, 15);
 
     // Table data
     const tableData = teachers.map((teacher) => {
-      const row: string[] = [teacher.name, ROLE_LABELS[teacher.role]];
-      let teacherTotal = 0;
-
-      weekDates.forEach((date) => {
-        const record = getMealRecord(teacher.id, date);
-        if (record) {
-          row.push('V');
-          teacherTotal += record.cost;
-        } else {
-          row.push('-');
-        }
-      });
-
-      row.push(formatCurrency(teacherTotal));
+      const teacherTotal = getTeacherMonthlyTotal(teacher.id, month, year);
+      const payment = getMonthlyPayment(teacher.id, month, year);
       
-      const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
-      row.push(payment?.isPaid ? 'Lunas' : 'Belum');
-      
-      return row;
+      return [
+        teacher.name,
+        ROLE_LABELS[teacher.role],
+        monthRecords.filter(r => r.teacherId === teacher.id).length.toString(),
+        formatCurrency(teacherTotal),
+        payment?.isPaid ? 'Lunas' : 'Belum',
+      ];
     });
 
     // Headers
-    const headers = [
-      'Nama',
-      'Keterangan',
-      ...DAYS_OF_WEEK.map((day, i) => `${day}\n${formatDate(weekDates[i])}`),
-      'Total',
-      'Status',
-    ];
+    const headers = ['Nama', 'Keterangan', 'Total Hari', 'Total Biaya', 'Status'];
 
     autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 28,
-      styles: { fontSize: 9, cellPadding: 3 },
+      startY: 22,
+      styles: { fontSize: 10, cellPadding: 4 },
       headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center' },
       columnStyles: {
-        0: { cellWidth: 35 },
-        1: { cellWidth: 25 },
-        9: { halign: 'right', fontStyle: 'bold' },
-        10: { halign: 'center' },
+        0: { cellWidth: 50 },
+        1: { cellWidth: 40 },
+        2: { halign: 'center' },
+        3: { halign: 'right', fontStyle: 'bold' },
+        4: { halign: 'center' },
       },
       foot: [[
-        { content: 'Total Minggu Ini:', colSpan: 9, styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: formatCurrency(weekTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: 'Total Bulan Ini:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(monthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
     });
 
-    doc.save(`data-makan-minggu-${weekNumber}-${monthName}-${year}.pdf`);
+    doc.save(`data-makan-${monthName}-${year}.pdf`);
   };
 
   // Calculate paid and unpaid totals
   const paidTotal = filteredTeachers.reduce((sum, teacher) => {
-    const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+    const payment = getMonthlyPayment(teacher.id, month, year);
     if (payment?.isPaid) {
-      return sum + getTeacherWeeklyTotal(teacher.id, weekStart);
+      return sum + getTeacherMonthlyTotal(teacher.id, month, year);
     }
     return sum;
   }, 0);
 
-  const unpaidTotal = weekTotal - paidTotal;
+  const unpaidTotal = monthTotal - paidTotal;
 
   return (
     <Card className="border-border/50">
@@ -147,32 +137,11 @@ export function WeeklyMealTable({
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div>
               <CardTitle className="text-lg font-semibold text-foreground">
-                Data Makan Mingguan
+                Data Makan Bulanan
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                Minggu ke-{weekNumber} • {getMonthName(weekStart.getMonth() + 1)} {weekStart.getFullYear()}
+                {getMonthName(month)} {year}
               </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onWeekChange('prev')}
-                className="h-8 w-8"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </Button>
-              <span className="text-sm font-medium text-foreground min-w-[80px] text-center">
-                {formatDate(weekDates[0])} - {formatDate(weekDates[6])}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => onWeekChange('next')}
-                className="h-8 w-8"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </Button>
             </div>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
@@ -204,44 +173,43 @@ export function WeeklyMealTable({
         ) : (
           <>
             <div className="overflow-x-auto -mx-4 px-4">
-              <table className="w-full min-w-[800px]">
+              <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground w-[140px]">
+                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground sticky left-0 bg-card z-10 min-w-[140px]">
                       Nama
                     </th>
-                    {weekDates.map((date, index) => (
+                    {monthDates.map((date) => (
                       <th
                         key={date.toISOString()}
-                        className="text-center py-3 px-1 text-sm font-medium text-muted-foreground"
+                        className="text-center py-3 px-1 text-sm font-medium text-muted-foreground min-w-[40px]"
                       >
-                        <div>{DAYS_OF_WEEK[index]}</div>
-                        <div className="text-xs font-normal">{formatDate(date)}</div>
+                        <div className="text-xs">{date.getDate()}</div>
                       </th>
                     ))}
-                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground w-[90px]">
+                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground min-w-[90px]">
                       Total
                     </th>
-                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground w-[100px]">
+                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground min-w-[100px]">
                       Status
                     </th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredTeachers.map((teacher) => {
-                    const teacherWeekTotal = getTeacherWeeklyTotal(teacher.id, weekStart);
-                    const payment = getWeeklyPayment(teacher.id, weekNumber, weekYear);
+                    const teacherMonthTotal = getTeacherMonthlyTotal(teacher.id, month, year);
+                    const payment = getMonthlyPayment(teacher.id, month, year);
                     const isPaid = payment?.isPaid || false;
 
                     return (
                       <tr key={teacher.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-3 px-2">
+                        <td className="py-3 px-2 sticky left-0 bg-card z-10">
                           <div className="font-medium text-foreground text-sm">{teacher.name}</div>
                           <div className="text-xs text-muted-foreground">
                             {ROLE_LABELS[teacher.role]}
                           </div>
                         </td>
-                        {weekDates.map((date) => {
+                        {monthDates.map((date) => {
                           const record = getMealRecord(teacher.id, date);
                           const isChecked = !!record;
                           return (
@@ -256,19 +224,19 @@ export function WeeklyMealTable({
                                       checked ? 'siang' : null
                                     );
                                   }}
-                                  className="h-6 w-6 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                  className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
                               </div>
                             </td>
                           );
                         })}
                         <td className="py-3 px-2 text-right">
-                          <span className={`text-sm font-medium ${teacherWeekTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
-                            {formatCurrency(teacherWeekTotal)}
+                          <span className={`text-sm font-medium ${teacherMonthTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                            {formatCurrency(teacherMonthTotal)}
                           </span>
                         </td>
                         <td className="py-3 px-2 text-center">
-                          {teacherWeekTotal > 0 ? (
+                          {teacherMonthTotal > 0 ? (
                             <Button
                               variant="ghost"
                               size="sm"
@@ -297,12 +265,12 @@ export function WeeklyMealTable({
                 </tbody>
                 <tfoot>
                   <tr className="bg-muted/50">
-                    <td colSpan={8} className="py-3 px-2 text-right font-semibold text-foreground">
-                      Total Minggu Ini:
+                    <td colSpan={monthDates.length + 1} className="py-3 px-2 text-right font-semibold text-foreground">
+                      Total Bulan Ini:
                     </td>
                     <td className="py-3 px-2 text-right">
                       <span className="text-lg font-bold text-success">
-                        {formatCurrency(weekTotal)}
+                        {formatCurrency(monthTotal)}
                       </span>
                     </td>
                     <td className="py-3 px-2 text-center">

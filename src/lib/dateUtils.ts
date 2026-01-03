@@ -67,3 +67,16 @@ export function getMonthName(month: number): string {
   const date = new Date(2024, month - 1, 1);
   return new Intl.DateTimeFormat('id-ID', { month: 'long' }).format(date);
 }
+
+export function getMonthDates(month: number, year: number): Date[] {
+  const dates: Date[] = [];
+  const daysInMonth = new Date(year, month, 0).getDate();
+  for (let day = 1; day <= daysInMonth; day++) {
+    dates.push(new Date(year, month - 1, day));
+  }
+  return dates;
+}
+
+export function getDaysInMonth(month: number, year: number): number {
+  return new Date(year, month, 0).getDate();
+}
