@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,12 +8,28 @@ import { Badge } from '@/components/ui/badge';
 import { Teacher, MealRecord, MealType, MEAL_PRICES, ROLE_LABELS } from '@/types/meal';
 import {
   getMonthDates,
-  formatDateKey,
   formatCurrency,
   getMonthName,
 } from '@/lib/dateUtils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+
+const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+const DAY_FILTERS = [
+  { value: 1, label: 'Senin' },
+  { value: 2, label: 'Selasa' },
+  { value: 3, label: 'Rabu' },
+  { value: 4, label: 'Kamis' },
+  { value: 5, label: 'Jumat' },
+  { value: 6, label: 'Sabtu' },
+  { value: 0, label: 'Minggu' },
+];
 
 interface MonthlyPayment {
   id: string;
@@ -49,7 +65,10 @@ export function MonthlyMealTable({
   getTeacherMonthlyTotal,
 }: MonthlyMealTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
-  const monthDates = getMonthDates(month, year);
+  const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default Senin-Jumat
+  
+  const allMonthDates = getMonthDates(month, year);
+  const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
   const monthRecords = getMonthRecords(month, year);
   const monthTotal = monthRecords.reduce((sum, r) => sum + r.cost, 0);
 
@@ -58,6 +77,22 @@ export function MonthlyMealTable({
       teacher.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ROLE_LABELS[teacher.role].toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const toggleDay = (day: number) => {
+    setSelectedDays(prev => 
+      prev.includes(day) 
+        ? prev.filter(d => d !== day)
+        : [...prev, day].sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b))
+    );
+  };
+
+  const selectWeekdays = () => {
+    setSelectedDays([1, 2, 3, 4, 5]);
+  };
+
+  const selectAllDays = () => {
+    setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+  };
 
   const handlePaymentToggle = async (teacher: Teacher) => {
     const total = getTeacherMonthlyTotal(teacher.id, month, year);
@@ -154,6 +189,33 @@ export function MonthlyMealTable({
                 className="pl-9"
               />
             </div>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Filter className="w-4 h-4" />
+                  Hari ({selectedDays.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <div className="px-2 py-1.5 flex gap-2">
+                  <Button size="sm" variant="ghost" className="flex-1 h-7 text-xs" onClick={selectWeekdays}>
+                    Sen-Jum
+                  </Button>
+                  <Button size="sm" variant="ghost" className="flex-1 h-7 text-xs" onClick={selectAllDays}>
+                    Semua
+                  </Button>
+                </div>
+                {DAY_FILTERS.map((day) => (
+                  <DropdownMenuCheckboxItem
+                    key={day.value}
+                    checked={selectedDays.includes(day.value)}
+                    onCheckedChange={() => toggleDay(day.value)}
+                  >
+                    {day.label}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button onClick={exportToPDF} variant="outline" className="gap-2">
               <FileDown className="w-4 h-4" />
               Export PDF
@@ -184,6 +246,7 @@ export function MonthlyMealTable({
                         key={date.toISOString()}
                         className="text-center py-3 px-1 text-sm font-medium text-muted-foreground min-w-[40px]"
                       >
+                        <div className="text-[10px] text-muted-foreground/70">{DAY_NAMES[date.getDay()]}</div>
                         <div className="text-xs">{date.getDate()}</div>
                       </th>
                     ))}
