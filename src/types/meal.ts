@@ -35,10 +35,10 @@ export interface WeeklyMealData {
   totalCost: number;
 }
 
-export interface WeeklyPayment {
+export interface MonthlyPayment {
   id: string;
   teacherId: string;
-  weekNumber: number;
+  month: number;
   year: number;
   amount: number;
   isPaid: boolean;

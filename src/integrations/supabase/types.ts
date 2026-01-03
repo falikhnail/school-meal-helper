@@ -46,6 +46,47 @@ export type Database = {
           },
         ]
       }
+      monthly_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          is_paid: boolean
+          month: number
+          paid_at: string | null
+          teacher_id: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          month: number
+          paid_at?: string | null
+          teacher_id: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          is_paid?: boolean
+          month?: number
+          paid_at?: string | null
+          teacher_id?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monthly_payments_teacher_id_fkey"
+            columns: ["teacher_id"]
+            isOneToOne: false
+            referencedRelation: "teachers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teachers: {
         Row: {
           created_at: string
