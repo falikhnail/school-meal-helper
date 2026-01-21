@@ -1,73 +1,121 @@
-# Welcome to your Lovable project
+# Sistem Pendataan Makan Guru SR
 
-## Project info
+Aplikasi web untuk mengelola dan melacak data makan guru di sekolah. Menggantikan sistem spreadsheet manual dengan solusi digital yang lebih efisien.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 📋 Fitur Utama
 
-## How can I edit this code?
+### 1. Manajemen Guru
+- Tambah, edit, dan hapus data guru
+- Kategori peran: Kepala Sekolah, Guru, Tendik, Nakes, Kepala Komite
+- Pencarian guru berdasarkan nama atau peran
 
-There are several ways of editing your application.
+### 2. Pencatatan Makan Bulanan
+- Tampilan kalender bulanan interaktif
+- Klik untuk mencatat/membatalkan makan per tanggal
+- Filter hari (default Senin-Jumat, bisa diubah)
+- Harga makan: Rp 10.000/porsi
 
-**Use Lovable**
+### 3. Pembayaran
+- Status pembayaran bulanan per guru (Lunas/Belum)
+- Toggle status dengan satu klik
+- Ringkasan total lunas dan belum lunas
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### 4. Statistik & Laporan
+- Total guru terdaftar
+- Total porsi makan bulan ini
+- Total biaya bulanan
+- Export laporan ke PDF
 
-Changes made via Lovable will be committed automatically to this repo.
+### 5. Filter & Navigasi
+- Filter berdasarkan bulan dan tahun
+- Reset ke bulan/tahun saat ini
+- Pencarian guru real-time
 
-**Use your preferred IDE**
+## 🛠️ Teknologi
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- **Frontend**: React, TypeScript, Tailwind CSS
+- **UI Components**: shadcn/ui
+- **Backend**: Lovable Cloud (Supabase)
+- **Database**: PostgreSQL
+- **Export**: jsPDF + jspdf-autotable
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 📊 Struktur Database
 
-Follow these steps:
+### Tabel `teachers`
+| Kolom | Tipe | Deskripsi |
+|-------|------|-----------|
+| id | UUID | Primary key |
+| name | TEXT | Nama guru |
+| role | TEXT | Peran (kepala_sekolah, guru, tendik, nakes, kepala_komite) |
+| created_at | TIMESTAMP | Waktu dibuat |
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+### Tabel `meal_records`
+| Kolom | Tipe | Deskripsi |
+|-------|------|-----------|
+| id | UUID | Primary key |
+| teacher_id | UUID | Referensi ke teachers |
+| date | DATE | Tanggal makan |
+| meal_type | TEXT | Tipe makan (siang) |
+| created_at | TIMESTAMP | Waktu dibuat |
+
+### Tabel `monthly_payments`
+| Kolom | Tipe | Deskripsi |
+|-------|------|-----------|
+| id | UUID | Primary key |
+| teacher_id | UUID | Referensi ke teachers |
+| month | INTEGER | Bulan (1-12) |
+| year | INTEGER | Tahun |
+| amount | INTEGER | Jumlah tagihan |
+| is_paid | BOOLEAN | Status pembayaran |
+| paid_at | TIMESTAMP | Waktu pembayaran |
+
+## 🚀 Cara Penggunaan
+
+### Menambah Guru
+1. Klik tombol "Tambah Guru" di panel kanan
+2. Masukkan nama dan pilih peran
+3. Klik "Simpan"
+
+### Mencatat Makan
+1. Pilih bulan dan tahun menggunakan filter
+2. Klik sel tanggal pada baris guru yang bersangkutan
+3. Ikon matahari (☀️) menandakan sudah makan
+
+### Mengubah Status Pembayaran
+1. Klik badge "Lunas" atau "Belum" pada kolom Status
+2. Status akan berubah secara otomatis
+
+### Export PDF
+1. Klik tombol "Export PDF"
+2. File PDF akan terunduh dengan data bulanan
+
+## 📱 Responsif
+
+Aplikasi ini responsif dan dapat diakses melalui:
+- Desktop
+- Tablet
+- Mobile
+
+## 🔧 Instalasi Lokal
+
+```bash
+# Clone repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
+# Masuk ke direktori
 cd <YOUR_PROJECT_NAME>
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Jalankan development server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## 📄 Lisensi
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Hak Cipta © 2024. Semua hak dilindungi.
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Dibuat dengan ❤️ menggunakan [Lovable](https://lovable.dev)
