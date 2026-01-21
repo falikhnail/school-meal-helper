@@ -101,6 +101,8 @@ export function MonthlyMealTable({
     await setMonthlyPaymentStatus(teacher.id, month, year, total, newIsPaid);
   };
 
+  const DAY_NAMES_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+
   const exportToPDF = () => {
     if (teachers.length === 0) {
       alert('Tidak ada data guru untuk di-export. Tambahkan guru terlebih dahulu.');
@@ -114,38 +116,59 @@ export function MonthlyMealTable({
     doc.setFontSize(16);
     doc.text(`Data Makan Bulanan - ${monthName} ${year}`, 14, 15);
 
-    // Table data
+    // Create date headers with day names
+    const dateHeaders = monthDates.map(date => {
+      const dayName = DAY_NAMES_FULL[date.getDay()].substring(0, 3);
+      return `${dayName}\n${date.getDate()}`;
+    });
+
+    // Headers: Nama, Keterangan, [dates...], Total, Status
+    const headers = ['Nama', 'Ket.', ...dateHeaders, 'Total', 'Status'];
+
+    // Table data with meal records for each date
     const tableData = teachers.map((teacher) => {
       const teacherTotal = getTeacherMonthlyTotal(teacher.id, month, year);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
+      // Create meal status for each date
+      const mealStatuses = monthDates.map(date => {
+        const record = getMealRecord(teacher.id, date);
+        return record ? '✓' : '-';
+      });
+      
       return [
         teacher.name,
-        ROLE_LABELS[teacher.role],
-        monthRecords.filter(r => r.teacherId === teacher.id).length.toString(),
+        ROLE_LABELS[teacher.role].substring(0, 8),
+        ...mealStatuses,
         formatCurrency(teacherTotal),
         payment?.isPaid ? 'Lunas' : 'Belum',
       ];
     });
 
-    // Headers
-    const headers = ['Nama', 'Keterangan', 'Total Hari', 'Total Biaya', 'Status'];
+    // Dynamic column styles
+    const columnStyles: { [key: string]: object } = {
+      '0': { cellWidth: 35 },
+      '1': { cellWidth: 20, halign: 'center' },
+    };
+    
+    // Date columns
+    monthDates.forEach((_, index) => {
+      columnStyles[String(index + 2)] = { cellWidth: 8, halign: 'center' };
+    });
+    
+    // Total and Status columns
+    columnStyles[String(monthDates.length + 2)] = { cellWidth: 25, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(monthDates.length + 3)] = { cellWidth: 15, halign: 'center' };
 
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 22,
-      styles: { fontSize: 10, cellPadding: 4 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center' },
-      columnStyles: {
-        0: { cellWidth: 50 },
-        1: { cellWidth: 40 },
-        2: { halign: 'center' },
-        3: { halign: 'right', fontStyle: 'bold' },
-        4: { halign: 'center' },
-      },
+      styles: { fontSize: 6, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 5 },
+      columnStyles,
       foot: [[
-        { content: 'Total Bulan Ini:', colSpan: 3, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: 'Total Bulan Ini:', colSpan: monthDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: formatCurrency(monthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
