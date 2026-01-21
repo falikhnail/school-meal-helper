@@ -112,12 +112,17 @@ export function MonthlyMealTable({
     const doc = new jsPDF('landscape');
     const monthName = getMonthName(month);
 
-    // Use ALL dates for export (not filtered), to match total calculations
-    const exportDates = allMonthDates;
+    // Use filtered dates for export (matches what user sees on screen)
+    const exportDates = monthDates;
 
-    // Title
+    // Title with filter info
     doc.setFontSize(16);
     doc.text(`Data Makan Bulanan - ${monthName} ${year}`, 14, 15);
+    
+    // Show which days are included
+    const dayNamesIncluded = selectedDays.map(d => DAY_NAMES_FULL[d]).join(', ');
+    doc.setFontSize(8);
+    doc.text(`Filter: ${dayNamesIncluded}`, 14, 20);
 
     // Create date headers with day names
     const dateHeaders = exportDates.map(date => {
@@ -128,9 +133,17 @@ export function MonthlyMealTable({
     // Headers: Nama, Keterangan, [dates...], Total, Status
     const headers = ['Nama', 'Ket.', ...dateHeaders, 'Total', 'Status'];
 
+    // Calculate filtered total for each teacher (only for selected days)
+    const getFilteredTotal = (teacherId: string) => {
+      return exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+    };
+
     // Table data with meal records for each date
     const tableData = teachers.map((teacher) => {
-      const teacherTotal = getTeacherMonthlyTotal(teacher.id, month, year);
+      const teacherTotal = getFilteredTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
       // Create meal status for each date
@@ -148,31 +161,34 @@ export function MonthlyMealTable({
       ];
     });
 
+    // Calculate filtered month total
+    const filteredMonthTotal = teachers.reduce((sum, teacher) => sum + getFilteredTotal(teacher.id), 0);
+
     // Dynamic column styles
     const columnStyles: { [key: string]: object } = {
       '0': { cellWidth: 30 },
-      '1': { cellWidth: 15, halign: 'center' },
+      '1': { cellWidth: 18, halign: 'center' },
     };
     
-    // Date columns - smaller for all days
+    // Date columns
     exportDates.forEach((_, index) => {
-      columnStyles[String(index + 2)] = { cellWidth: 7, halign: 'center' };
+      columnStyles[String(index + 2)] = { cellWidth: 9, halign: 'center' };
     });
     
     // Total and Status columns
-    columnStyles[String(exportDates.length + 2)] = { cellWidth: 22, halign: 'right', fontStyle: 'bold' };
-    columnStyles[String(exportDates.length + 3)] = { cellWidth: 12, halign: 'center' };
+    columnStyles[String(exportDates.length + 2)] = { cellWidth: 25, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(exportDates.length + 3)] = { cellWidth: 15, halign: 'center' };
 
     autoTable(doc, {
       head: [headers],
       body: tableData,
-      startY: 22,
-      styles: { fontSize: 5, cellPadding: 1 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 4 },
+      startY: 25,
+      styles: { fontSize: 6, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 5 },
       columnStyles,
       foot: [[
-        { content: 'Total Bulan Ini:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: formatCurrency(monthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: 'Total:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(filteredMonthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
     });
