@@ -112,12 +112,15 @@ export function MonthlyMealTable({
     const doc = new jsPDF('landscape');
     const monthName = getMonthName(month);
 
+    // Use ALL dates for export (not filtered), to match total calculations
+    const exportDates = allMonthDates;
+
     // Title
     doc.setFontSize(16);
     doc.text(`Data Makan Bulanan - ${monthName} ${year}`, 14, 15);
 
     // Create date headers with day names
-    const dateHeaders = monthDates.map(date => {
+    const dateHeaders = exportDates.map(date => {
       const dayName = DAY_NAMES_FULL[date.getDay()].substring(0, 3);
       return `${dayName}\n${date.getDate()}`;
     });
@@ -131,7 +134,7 @@ export function MonthlyMealTable({
       const payment = getMonthlyPayment(teacher.id, month, year);
       
       // Create meal status for each date
-      const mealStatuses = monthDates.map(date => {
+      const mealStatuses = exportDates.map(date => {
         const record = getMealRecord(teacher.id, date);
         return record ? '✓' : '-';
       });
@@ -147,28 +150,28 @@ export function MonthlyMealTable({
 
     // Dynamic column styles
     const columnStyles: { [key: string]: object } = {
-      '0': { cellWidth: 35 },
-      '1': { cellWidth: 20, halign: 'center' },
+      '0': { cellWidth: 30 },
+      '1': { cellWidth: 15, halign: 'center' },
     };
     
-    // Date columns
-    monthDates.forEach((_, index) => {
-      columnStyles[String(index + 2)] = { cellWidth: 8, halign: 'center' };
+    // Date columns - smaller for all days
+    exportDates.forEach((_, index) => {
+      columnStyles[String(index + 2)] = { cellWidth: 7, halign: 'center' };
     });
     
     // Total and Status columns
-    columnStyles[String(monthDates.length + 2)] = { cellWidth: 25, halign: 'right', fontStyle: 'bold' };
-    columnStyles[String(monthDates.length + 3)] = { cellWidth: 15, halign: 'center' };
+    columnStyles[String(exportDates.length + 2)] = { cellWidth: 22, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(exportDates.length + 3)] = { cellWidth: 12, halign: 'center' };
 
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 22,
-      styles: { fontSize: 6, cellPadding: 1 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 5 },
+      styles: { fontSize: 5, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 4 },
       columnStyles,
       foot: [[
-        { content: 'Total Bulan Ini:', colSpan: monthDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: 'Total Bulan Ini:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
         { content: formatCurrency(monthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
