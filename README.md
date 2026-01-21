@@ -114,8 +114,8 @@ npm run dev
 
 ## 📄 Lisensi
 
-Hak Cipta © 2024. Semua hak dilindungi.
+Hak Cipta © 20256. Semua hak dilindungi.
 
 ---
 
-Dibuat dengan ❤️ menggunakan [Lovable](https://lovable.dev)
+Dibuat dengan ❤️
