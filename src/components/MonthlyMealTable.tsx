@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -15,7 +15,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -103,7 +105,7 @@ export function MonthlyMealTable({
 
   const DAY_NAMES_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-  const exportToPDF = () => {
+  const exportToPDF = (exportAll: boolean) => {
     if (teachers.length === 0) {
       alert('Tidak ada data guru untuk di-export. Tambahkan guru terlebih dahulu.');
       return;
@@ -112,17 +114,22 @@ export function MonthlyMealTable({
     const doc = new jsPDF('landscape');
     const monthName = getMonthName(month);
 
-    // Use filtered dates for export (matches what user sees on screen)
-    const exportDates = monthDates;
+    // Choose dates based on export option
+    const exportDates = exportAll ? allMonthDates : monthDates;
 
     // Title with filter info
     doc.setFontSize(16);
     doc.text(`Data Makan Bulanan - ${monthName} ${year}`, 14, 15);
     
     // Show which days are included
-    const dayNamesIncluded = selectedDays.map(d => DAY_NAMES_FULL[d]).join(', ');
-    doc.setFontSize(8);
-    doc.text(`Filter: ${dayNamesIncluded}`, 14, 20);
+    if (exportAll) {
+      doc.setFontSize(8);
+      doc.text(`Semua Hari`, 14, 20);
+    } else {
+      const dayNamesIncluded = selectedDays.map(d => DAY_NAMES_FULL[d]).join(', ');
+      doc.setFontSize(8);
+      doc.text(`Filter: ${dayNamesIncluded}`, 14, 20);
+    }
 
     // Create date headers with day names
     const dateHeaders = exportDates.map(date => {
@@ -133,8 +140,8 @@ export function MonthlyMealTable({
     // Headers: Nama, Keterangan, [dates...], Total, Status
     const headers = ['Nama', 'Ket.', ...dateHeaders, 'Total', 'Status'];
 
-    // Calculate filtered total for each teacher (only for selected days)
-    const getFilteredTotal = (teacherId: string) => {
+    // Calculate total for each teacher based on export dates
+    const getExportTotal = (teacherId: string) => {
       return exportDates.reduce((sum, date) => {
         const record = getMealRecord(teacherId, date);
         return sum + (record ? record.cost : 0);
@@ -143,7 +150,7 @@ export function MonthlyMealTable({
 
     // Table data with meal records for each date
     const tableData = teachers.map((teacher) => {
-      const teacherTotal = getFilteredTotal(teacher.id);
+      const teacherTotal = getExportTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
       // Create meal status for each date
@@ -161,34 +168,35 @@ export function MonthlyMealTable({
       ];
     });
 
-    // Calculate filtered month total
-    const filteredMonthTotal = teachers.reduce((sum, teacher) => sum + getFilteredTotal(teacher.id), 0);
+    // Calculate export month total
+    const exportMonthTotal = teachers.reduce((sum, teacher) => sum + getExportTotal(teacher.id), 0);
 
-    // Dynamic column styles
+    // Dynamic column styles - adjust based on number of dates
     const columnStyles: { [key: string]: object } = {
-      '0': { cellWidth: 30 },
-      '1': { cellWidth: 18, halign: 'center' },
+      '0': { cellWidth: exportAll ? 25 : 30 },
+      '1': { cellWidth: exportAll ? 12 : 18, halign: 'center' },
     };
     
-    // Date columns
+    // Date columns - smaller if exporting all days
+    const dateColWidth = exportAll ? 6 : 9;
     exportDates.forEach((_, index) => {
-      columnStyles[String(index + 2)] = { cellWidth: 9, halign: 'center' };
+      columnStyles[String(index + 2)] = { cellWidth: dateColWidth, halign: 'center' };
     });
     
     // Total and Status columns
-    columnStyles[String(exportDates.length + 2)] = { cellWidth: 25, halign: 'right', fontStyle: 'bold' };
-    columnStyles[String(exportDates.length + 3)] = { cellWidth: 15, halign: 'center' };
+    columnStyles[String(exportDates.length + 2)] = { cellWidth: exportAll ? 20 : 25, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(exportDates.length + 3)] = { cellWidth: exportAll ? 12 : 15, halign: 'center' };
 
     autoTable(doc, {
       head: [headers],
       body: tableData,
       startY: 25,
-      styles: { fontSize: 6, cellPadding: 1 },
-      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: 5 },
+      styles: { fontSize: exportAll ? 5 : 6, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: exportAll ? 4 : 5 },
       columnStyles,
       foot: [[
         { content: 'Total:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
-        { content: formatCurrency(filteredMonthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(exportMonthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
     });
@@ -258,10 +266,26 @@ export function MonthlyMealTable({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button onClick={exportToPDF} variant="outline" className="gap-2">
-              <FileDown className="w-4 h-4" />
-              Export PDF
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <FileDown className="w-4 h-4" />
+                  Export PDF
+                  <ChevronDown className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem onClick={() => exportToPDF(false)}>
+                  <Filter className="w-4 h-4 mr-2" />
+                  Hari Terfilter ({selectedDays.length} hari)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => exportToPDF(true)}>
+                  <FileDown className="w-4 h-4 mr-2" />
+                  Semua Hari (31 hari)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </CardHeader>
