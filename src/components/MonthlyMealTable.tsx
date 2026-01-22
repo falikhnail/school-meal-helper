@@ -106,7 +106,10 @@ export function MonthlyMealTable({
   const DAY_NAMES_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
   const exportToPDF = (exportAll: boolean) => {
-    if (teachers.length === 0) {
+    // Export should follow current visible teacher filter (search)
+    const exportTeachers = filteredTeachers;
+
+    if (exportTeachers.length === 0) {
       alert('Tidak ada data guru untuk di-export. Tambahkan guru terlebih dahulu.');
       return;
     }
@@ -149,7 +152,7 @@ export function MonthlyMealTable({
     };
 
     // Table data with meal records for each date
-    const tableData = teachers.map((teacher) => {
+    const tableData = exportTeachers.map((teacher) => {
       const teacherTotal = getExportTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
@@ -169,7 +172,7 @@ export function MonthlyMealTable({
     });
 
     // Calculate export month total
-    const exportMonthTotal = teachers.reduce((sum, teacher) => sum + getExportTotal(teacher.id), 0);
+    const exportMonthTotal = exportTeachers.reduce((sum, teacher) => sum + getExportTotal(teacher.id), 0);
 
     // Dynamic column styles - adjust based on number of dates
     const columnStyles: { [key: string]: object } = {
@@ -282,7 +285,7 @@ export function MonthlyMealTable({
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => exportToPDF(true)}>
                   <FileDown className="w-4 h-4 mr-2" />
-                  Semua Hari (31 hari)
+                  Semua Hari ({allMonthDates.length} hari)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
