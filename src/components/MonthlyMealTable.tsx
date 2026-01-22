@@ -325,12 +325,12 @@ export function MonthlyMealTable({
               <DropdownMenuContent align="end" className="bg-popover">
                 <DropdownMenuItem onClick={() => openPreview('filtered')}>
                   <Eye className="w-4 h-4 mr-2" />
-                  Hari Terfilter ({selectedDays.length} hari)
+                  Hari Terfilter ({monthDates.length} tanggal)
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => openPreview('all')}>
                   <Eye className="w-4 h-4 mr-2" />
-                  Semua Hari ({allMonthDates.length} hari)
+                  Semua Hari ({allMonthDates.length} tanggal)
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
