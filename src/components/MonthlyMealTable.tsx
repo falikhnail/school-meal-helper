@@ -196,15 +196,15 @@ export function MonthlyMealTable({
       }, 0);
     };
 
-    // Table data with meal records for each date
+    // Table data with meal records for each date - using checkmarks only for meals
     const tableData = exportTeachers.map((teacher) => {
       const teacherTotal = getExportTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
-      // Create meal status for each date
+      // Create meal status for each date - show ✓ for meals, empty for no meal
       const mealStatuses = exportDates.map(date => {
         const record = getMealRecord(teacher.id, date);
-        return record ? '✓' : '-';
+        return record ? '✓' : '';
       });
       
       return [
