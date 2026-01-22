@@ -21,11 +21,19 @@ export function getEndOfWeek(date: Date): Date {
 }
 
 export function formatDateKey(date: Date): string {
-  return date.toISOString().split('T')[0];
+  // IMPORTANT:
+  // Use *local* date parts to avoid timezone shifts (e.g. GMT+7 turning
+  // local midnight into previous UTC date when using toISOString()).
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
 }
 
 export function parseDateKey(dateKey: string): Date {
-  return new Date(dateKey + 'T00:00:00');
+  // Parse as local date (not UTC) to match formatDateKey
+  const [y, m, d] = dateKey.split('-').map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
 export function getWeekDates(weekStart: Date): Date[] {
