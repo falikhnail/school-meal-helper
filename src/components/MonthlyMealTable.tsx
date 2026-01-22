@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter, ChevronDown } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -68,6 +76,8 @@ export function MonthlyMealTable({
 }: MonthlyMealTableProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default Senin-Jumat
+  const [showPreview, setShowPreview] = useState(false);
+  const [exportMode, setExportMode] = useState<'filtered' | 'all'>('filtered');
   
   const allMonthDates = getMonthDates(month, year);
   const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
@@ -105,7 +115,40 @@ export function MonthlyMealTable({
 
   const DAY_NAMES_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
-  const exportToPDF = (exportAll: boolean) => {
+  const openPreview = (mode: 'filtered' | 'all') => {
+    setExportMode(mode);
+    setShowPreview(true);
+  };
+
+  const getExportPreviewData = () => {
+    const exportAll = exportMode === 'all';
+    const exportDates = exportAll ? allMonthDates : monthDates;
+    const exportTeachers = filteredTeachers;
+    
+    const getExportTotal = (teacherId: string) => {
+      return exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+    };
+
+    const exportMonthTotal = exportTeachers.reduce((sum, teacher) => sum + getExportTotal(teacher.id), 0);
+    const teachersWithMeals = exportTeachers.filter(t => getExportTotal(t.id) > 0).length;
+    
+    return {
+      monthName: getMonthName(month),
+      year,
+      modeLabel: exportAll ? 'Semua Hari' : 'Hari Terfilter',
+      daysCount: exportDates.length,
+      selectedDaysLabel: exportAll ? 'Semua hari dalam bulan' : selectedDays.map(d => DAY_NAMES_FULL[d]).join(', '),
+      teacherCount: exportTeachers.length,
+      teachersWithMeals,
+      total: exportMonthTotal,
+    };
+  };
+
+  const exportToPDF = () => {
+    const exportAll = exportMode === 'all';
     // Export should follow current visible teacher filter (search)
     const exportTeachers = filteredTeachers;
 
@@ -113,6 +156,8 @@ export function MonthlyMealTable({
       alert('Tidak ada data guru untuk di-export. Tambahkan guru terlebih dahulu.');
       return;
     }
+    
+    setShowPreview(false);
 
     const doc = new jsPDF('landscape');
     const monthName = getMonthName(month);
@@ -278,13 +323,13 @@ export function MonthlyMealTable({
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
-                <DropdownMenuItem onClick={() => exportToPDF(false)}>
-                  <Filter className="w-4 h-4 mr-2" />
+                <DropdownMenuItem onClick={() => openPreview('filtered')}>
+                  <Eye className="w-4 h-4 mr-2" />
                   Hari Terfilter ({selectedDays.length} hari)
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => exportToPDF(true)}>
-                  <FileDown className="w-4 h-4 mr-2" />
+                <DropdownMenuItem onClick={() => openPreview('all')}>
+                  <Eye className="w-4 h-4 mr-2" />
                   Semua Hari ({allMonthDates.length} hari)
                 </DropdownMenuItem>
               </DropdownMenuContent>
@@ -427,6 +472,80 @@ export function MonthlyMealTable({
             </div>
           </>
         )}
+
+        {/* Export Preview Modal */}
+        <Dialog open={showPreview} onOpenChange={setShowPreview}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <FileDown className="w-5 h-5 text-primary" />
+                Preview Export PDF
+              </DialogTitle>
+              <DialogDescription>
+                Periksa ringkasan data sebelum mengunduh
+              </DialogDescription>
+            </DialogHeader>
+            
+            {showPreview && (() => {
+              const preview = getExportPreviewData();
+              return (
+                <div className="space-y-4">
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Periode</span>
+                      <span className="font-medium">{preview.monthName} {preview.year}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Mode Export</span>
+                      <Badge variant="secondary">{preview.modeLabel}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Hari yang diexport</span>
+                      <span className="text-sm font-medium">{preview.daysCount} hari</span>
+                    </div>
+                    <div className="text-xs text-muted-foreground border-t border-border pt-2">
+                      {preview.selectedDaysLabel}
+                    </div>
+                  </div>
+                  
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Jumlah Guru</span>
+                      <span className="font-medium">{preview.teacherCount} orang</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Guru dengan Data Makan</span>
+                      <span className="font-medium">{preview.teachersWithMeals} orang</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-primary/10 rounded-lg p-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-medium">Total Biaya</span>
+                      <span className="text-lg font-bold text-primary">{formatCurrency(preview.total)}</span>
+                    </div>
+                  </div>
+                  
+                  {preview.teachersWithMeals === 0 && (
+                    <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
+                      ⚠️ Tidak ada data makan untuk periode ini. PDF akan kosong.
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setShowPreview(false)}>
+                Batal
+              </Button>
+              <Button onClick={exportToPDF} className="gap-2">
+                <FileDown className="w-4 h-4" />
+                Download PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
