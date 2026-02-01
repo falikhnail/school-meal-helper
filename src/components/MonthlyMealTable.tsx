@@ -345,7 +345,7 @@ export function MonthlyMealTable({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <TooltipProvider>
+            <TooltipProvider delayDuration={100}>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -366,7 +366,11 @@ export function MonthlyMealTable({
                     )}
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" className="max-w-xs">
+                <TooltipContent 
+                  side="bottom" 
+                  className="max-w-xs"
+                  sideOffset={8}
+                >
                   {isBulkMode ? (
                     <p><strong>Mode Bulk:</strong> Klik pada satu tanggal akan otomatis mencentang/menghapus centang semua hari yang sama dalam bulan ini (misal: semua hari Senin)</p>
                   ) : (
