@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -344,24 +345,36 @@ export function MonthlyMealTable({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button
-              variant={isBulkMode ? "default" : "outline"}
-              className="gap-2"
-              onClick={() => setIsBulkMode(!isBulkMode)}
-              title={isBulkMode ? "Mode Bulk: Klik akan centang semua hari yang sama" : "Mode Individual: Klik hanya centang satu tanggal"}
-            >
-              {isBulkMode ? (
-                <>
-                  <Layers className="w-4 h-4" />
-                  <span className="hidden sm:inline">Bulk</span>
-                </>
-              ) : (
-                <>
-                  <MousePointerClick className="w-4 h-4" />
-                  <span className="hidden sm:inline">Individual</span>
-                </>
-              )}
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={isBulkMode ? "default" : "outline"}
+                    className="gap-2"
+                    onClick={() => setIsBulkMode(!isBulkMode)}
+                  >
+                    {isBulkMode ? (
+                      <>
+                        <Layers className="w-4 h-4" />
+                        <span className="hidden sm:inline">Bulk</span>
+                      </>
+                    ) : (
+                      <>
+                        <MousePointerClick className="w-4 h-4" />
+                        <span className="hidden sm:inline">Individual</span>
+                      </>
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  {isBulkMode ? (
+                    <p><strong>Mode Bulk:</strong> Klik pada satu tanggal akan otomatis mencentang/menghapus centang semua hari yang sama dalam bulan ini (misal: semua hari Senin)</p>
+                  ) : (
+                    <p><strong>Mode Individual:</strong> Klik hanya akan mencentang/menghapus centang satu tanggal saja</p>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
