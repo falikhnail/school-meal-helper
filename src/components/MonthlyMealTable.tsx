@@ -389,8 +389,12 @@ export function MonthlyMealTable({
                         {monthDates.map((date) => {
                           const record = getMealRecord(teacher.id, date);
                           const isChecked = !!record;
-                          return (
-                            <td key={date.toISOString()} className="py-2 px-1">
+                            return (
+                            <td 
+                              key={date.toISOString()} 
+                              className="py-2 px-1"
+                              onClick={(e) => e.stopPropagation()}
+                            >
                               <div className="flex justify-center">
                                 <Checkbox
                                   checked={isChecked}
@@ -401,6 +405,7 @@ export function MonthlyMealTable({
                                       checked ? 'siang' : null
                                     );
                                   }}
+                                  onClick={(e) => e.stopPropagation()}
                                   className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
                               </div>
