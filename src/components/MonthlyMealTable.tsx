@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -78,6 +78,7 @@ export function MonthlyMealTable({
   const [selectedDays, setSelectedDays] = useState<number[]>([1, 2, 3, 4, 5]); // Default Senin-Jumat
   const [showPreview, setShowPreview] = useState(false);
   const [exportMode, setExportMode] = useState<'filtered' | 'all'>('filtered');
+  const [isBulkMode, setIsBulkMode] = useState(true); // Toggle between bulk and individual mode
   
   const allMonthDates = getMonthDates(month, year);
   const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
@@ -124,6 +125,21 @@ export function MonthlyMealTable({
     // Process all same-day dates
     for (const date of sameDayDates) {
       await setMealRecord(teacher.id, date, newMealType);
+    }
+  };
+
+  // Individual toggle for a single date
+  const handleIndividualToggle = async (teacher: Teacher, date: Date, isCurrentlyChecked: boolean) => {
+    const newMealType = isCurrentlyChecked ? null : 'siang' as MealType;
+    await setMealRecord(teacher.id, date, newMealType);
+  };
+
+  // Handle checkbox change based on current mode
+  const handleCheckboxChange = (teacher: Teacher, date: Date, isChecked: boolean) => {
+    if (isBulkMode) {
+      handleBulkDayToggle(teacher, date, isChecked);
+    } else {
+      handleIndividualToggle(teacher, date, isChecked);
     }
   };
 
@@ -328,6 +344,24 @@ export function MonthlyMealTable({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
+            <Button
+              variant={isBulkMode ? "default" : "outline"}
+              className="gap-2"
+              onClick={() => setIsBulkMode(!isBulkMode)}
+              title={isBulkMode ? "Mode Bulk: Klik akan centang semua hari yang sama" : "Mode Individual: Klik hanya centang satu tanggal"}
+            >
+              {isBulkMode ? (
+                <>
+                  <Layers className="w-4 h-4" />
+                  <span className="hidden sm:inline">Bulk</span>
+                </>
+              ) : (
+                <>
+                  <MousePointerClick className="w-4 h-4" />
+                  <span className="hidden sm:inline">Individual</span>
+                </>
+              )}
+            </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
@@ -410,10 +444,10 @@ export function MonthlyMealTable({
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex justify-center">
-                                <Checkbox
+                              <Checkbox
                                   checked={isChecked}
                                   onCheckedChange={() => {
-                                    handleBulkDayToggle(teacher, date, isChecked);
+                                    handleCheckboxChange(teacher, date, isChecked);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                   className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
