@@ -113,6 +113,20 @@ export function MonthlyMealTable({
     await setMonthlyPaymentStatus(teacher.id, month, year, total, newIsPaid);
   };
 
+  // Bulk toggle all same day-of-week in the month for a teacher
+  const handleBulkDayToggle = async (teacher: Teacher, clickedDate: Date, isCurrentlyChecked: boolean) => {
+    const dayOfWeek = clickedDate.getDay();
+    const sameDayDates = monthDates.filter(date => date.getDay() === dayOfWeek);
+    
+    // Toggle: if currently checked, uncheck all same days; otherwise check all
+    const newMealType = isCurrentlyChecked ? null : 'siang' as MealType;
+    
+    // Process all same-day dates
+    for (const date of sameDayDates) {
+      await setMealRecord(teacher.id, date, newMealType);
+    }
+  };
+
   const DAY_NAMES_FULL = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
 
   const openPreview = (mode: 'filtered' | 'all') => {
@@ -389,7 +403,7 @@ export function MonthlyMealTable({
                         {monthDates.map((date) => {
                           const record = getMealRecord(teacher.id, date);
                           const isChecked = !!record;
-                            return (
+                          return (
                             <td 
                               key={date.toISOString()} 
                               className="py-2 px-1"
@@ -398,12 +412,8 @@ export function MonthlyMealTable({
                               <div className="flex justify-center">
                                 <Checkbox
                                   checked={isChecked}
-                                  onCheckedChange={(checked) => {
-                                    setMealRecord(
-                                      teacher.id,
-                                      date,
-                                      checked ? 'siang' : null
-                                    );
+                                  onCheckedChange={() => {
+                                    handleBulkDayToggle(teacher, date, isChecked);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
                                   className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
