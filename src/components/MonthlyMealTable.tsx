@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -80,11 +80,31 @@ export function MonthlyMealTable({
   const [showPreview, setShowPreview] = useState(false);
   const [exportMode, setExportMode] = useState<'filtered' | 'all'>('filtered');
   const [isBulkMode, setIsBulkMode] = useState(true); // Toggle between bulk and individual mode
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([1, 2, 3, 4, 5]); // Default all weeks (1-5 to cover months with 5 weeks)
   
   const allMonthDates = getMonthDates(month, year);
   const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
   const monthRecords = getMonthRecords(month, year);
   const monthTotal = monthRecords.reduce((sum, r) => sum + r.cost, 0);
+
+  // Helper function to get week number within month (1-5)
+  const getWeekOfMonth = (date: Date): number => {
+    const firstDayOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+    const firstDayOfWeek = firstDayOfMonth.getDay(); // 0 = Sunday
+    const dayOfMonth = date.getDate();
+    return Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+  };
+
+  // Get available weeks in the current month
+  const getAvailableWeeks = (): number[] => {
+    const weeks = new Set<number>();
+    allMonthDates.forEach(date => {
+      weeks.add(getWeekOfMonth(date));
+    });
+    return Array.from(weeks).sort((a, b) => a - b);
+  };
+
+  const availableWeeks = getAvailableWeeks();
 
   const filteredTeachers = teachers.filter(
     (teacher) =>
@@ -115,15 +135,31 @@ export function MonthlyMealTable({
     await setMonthlyPaymentStatus(teacher.id, month, year, total, newIsPaid);
   };
 
-  // Bulk toggle all same day-of-week in the month for a teacher
+  // Toggle week selection for bulk mode
+  const toggleWeek = (week: number) => {
+    setSelectedWeeks(prev => 
+      prev.includes(week) 
+        ? prev.filter(w => w !== week)
+        : [...prev, week].sort((a, b) => a - b)
+    );
+  };
+
+  const selectAllWeeks = () => {
+    setSelectedWeeks([...availableWeeks]);
+  };
+
+  // Bulk toggle all same day-of-week in the selected weeks for a teacher
   const handleBulkDayToggle = async (teacher: Teacher, clickedDate: Date, isCurrentlyChecked: boolean) => {
     const dayOfWeek = clickedDate.getDay();
-    const sameDayDates = monthDates.filter(date => date.getDay() === dayOfWeek);
+    // Filter same day dates that are also in selected weeks
+    const sameDayDates = monthDates.filter(date => {
+      return date.getDay() === dayOfWeek && selectedWeeks.includes(getWeekOfMonth(date));
+    });
     
     // Toggle: if currently checked, uncheck all same days; otherwise check all
     const newMealType = isCurrentlyChecked ? null : 'siang' as MealType;
     
-    // Process all same-day dates
+    // Process all same-day dates in selected weeks
     for (const date of sameDayDates) {
       await setMealRecord(teacher.id, date, newMealType);
     }
@@ -372,13 +408,40 @@ export function MonthlyMealTable({
                   sideOffset={8}
                 >
                   {isBulkMode ? (
-                    <p><strong>Mode Bulk:</strong> Klik pada satu tanggal akan otomatis mencentang/menghapus centang semua hari yang sama dalam bulan ini (misal: semua hari Senin)</p>
+                    <p><strong>Mode Bulk:</strong> Klik pada satu tanggal akan otomatis mencentang/menghapus centang semua hari yang sama di minggu yang dipilih (misal: semua hari Senin di minggu 1-4)</p>
                   ) : (
                     <p><strong>Mode Individual:</strong> Klik hanya akan mencentang/menghapus centang satu tanggal saja</p>
                   )}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {isBulkMode && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Minggu ({selectedWeeks.length})
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <div className="px-2 py-1.5">
+                    <Button size="sm" variant="ghost" className="w-full h-7 text-xs" onClick={selectAllWeeks}>
+                      Pilih Semua Minggu
+                    </Button>
+                  </div>
+                  <DropdownMenuSeparator />
+                  {availableWeeks.map((week) => (
+                    <DropdownMenuCheckboxItem
+                      key={week}
+                      checked={selectedWeeks.includes(week)}
+                      onCheckedChange={() => toggleWeek(week)}
+                    >
+                      Minggu ke-{week}
+                    </DropdownMenuCheckboxItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
