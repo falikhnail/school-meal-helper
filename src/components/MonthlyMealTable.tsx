@@ -538,11 +538,11 @@ export function MonthlyMealTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto -mx-4 px-4">
+            <div className="overflow-x-auto -mx-4 px-0 sm:px-4">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground sticky left-0 bg-card z-10 min-w-[140px]">
+                    <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground sticky left-0 bg-card z-10 min-w-[100px] sm:min-w-[140px]">
                       Nama
                     </th>
                     {monthDates.map((date) => (
