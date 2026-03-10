@@ -570,9 +570,9 @@ export function MonthlyMealTable({
 
                     return (
                       <tr key={teacher.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-3 px-2 sticky left-0 bg-card z-10">
-                          <div className="font-medium text-foreground text-sm">{teacher.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <td className="py-2 sm:py-3 px-2 sticky left-0 bg-card z-10">
+                          <div className="font-medium text-foreground text-xs sm:text-sm truncate max-w-[90px] sm:max-w-none">{teacher.name}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground">
                             {ROLE_LABELS[teacher.role]}
                           </div>
                         </td>
