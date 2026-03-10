@@ -407,9 +407,9 @@ export function MonthlyMealTable({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" size="sm">
                   <Filter className="w-4 h-4" />
-                  Hari ({selectedDays.length})
+                  <span className="hidden xs:inline">Hari</span> ({selectedDays.length})
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
