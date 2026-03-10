@@ -548,16 +548,16 @@ export function MonthlyMealTable({
                     {monthDates.map((date) => (
                       <th
                         key={date.toISOString()}
-                        className="text-center py-3 px-1 text-sm font-medium text-muted-foreground min-w-[40px]"
+                        className="text-center py-2 sm:py-3 px-0.5 sm:px-1 text-xs sm:text-sm font-medium text-muted-foreground min-w-[32px] sm:min-w-[40px]"
                       >
-                        <div className="text-[10px] text-muted-foreground/70">{DAY_NAMES[date.getDay()]}</div>
-                        <div className="text-xs">{date.getDate()}</div>
+                        <div className="text-[9px] sm:text-[10px] text-muted-foreground/70">{DAY_NAMES[date.getDay()]}</div>
+                        <div className="text-[10px] sm:text-xs">{date.getDate()}</div>
                       </th>
                     ))}
-                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground min-w-[90px]">
+                    <th className="text-right py-2 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-medium text-muted-foreground min-w-[70px] sm:min-w-[90px]">
                       Total
                     </th>
-                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground min-w-[100px]">
+                    <th className="text-center py-2 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-medium text-muted-foreground min-w-[70px] sm:min-w-[100px]">
                       Status
                     </th>
                   </tr>
