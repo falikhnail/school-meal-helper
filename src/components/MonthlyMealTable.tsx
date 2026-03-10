@@ -320,6 +320,56 @@ export function MonthlyMealTable({
     doc.save(`data-makan-${monthName}-${year}.pdf`);
   };
 
+  const exportToExcel = () => {
+    const exportAll = exportMode === 'all';
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0) {
+      alert('Tidak ada data guru untuk di-export.');
+      return;
+    }
+    setShowPreview(false);
+
+    const monthName = getMonthName(month);
+    const exportDates = exportAll ? allMonthDates : monthDates;
+
+    const getExportTotal = (teacherId: string) => {
+      return exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+    };
+
+    // Build worksheet data
+    const headers = ['No', 'Nama', 'Keterangan', ...exportDates.map(d => {
+      const dayName = DAY_NAMES_FULL[d.getDay()].substring(0, 3);
+      return `${dayName} ${d.getDate()}`;
+    }), 'Jumlah Porsi', 'Total Tagihan', 'Status'];
+
+    const rows = exportTeachers.map((teacher, idx) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
+      const payment = getMonthlyPayment(teacher.id, month, year);
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal, payment?.isPaid ? 'Lunas' : 'Belum'];
+    });
+
+    const exportMonthTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+    rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportMonthTotal, '']);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 4 }, { wch: 20 }, { wch: 15 },
+      ...exportDates.map(() => ({ wch: 6 })),
+      { wch: 12 }, { wch: 15 }, { wch: 10 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${year}`);
+    XLSX.writeFile(wb, `data-makan-${monthName}-${year}.xlsx`);
+  };
+
   // Calculate paid and unpaid totals
   const paidTotal = filteredTeachers.reduce((sum, teacher) => {
     const payment = getMonthlyPayment(teacher.id, month, year);
