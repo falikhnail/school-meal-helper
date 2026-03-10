@@ -4,6 +4,7 @@ import { TeacherManager } from '@/components/TeacherManager';
 import { MonthlyMealTable } from '@/components/MonthlyMealTable';
 import { MonthlySummary } from '@/components/MonthlySummary';
 import { MonthYearFilter } from '@/components/MonthYearFilter';
+import { ReminderBanner } from '@/components/ReminderBanner';
 import { useMealTracker } from '@/hooks/useMealTracker';
 import { useState } from 'react';
 
