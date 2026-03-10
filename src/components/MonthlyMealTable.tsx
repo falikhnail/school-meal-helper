@@ -437,7 +437,8 @@ export function MonthlyMealTable({
                 <TooltipTrigger asChild>
                   <Button
                     variant={isBulkMode ? "default" : "outline"}
-                    className="gap-2"
+                    className="gap-1.5"
+                    size="sm"
                     onClick={() => setIsBulkMode(!isBulkMode)}
                   >
                     {isBulkMode ? (
