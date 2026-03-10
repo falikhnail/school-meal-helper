@@ -497,19 +497,29 @@ export function MonthlyMealTable({
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" className="gap-2">
                   <FileDown className="w-4 h-4" />
-                  Export PDF
+                  <span className="hidden sm:inline">Export</span>
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuContent align="end" className="bg-popover w-56">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Export PDF</div>
                 <DropdownMenuItem onClick={() => openPreview('filtered')}>
                   <Eye className="w-4 h-4 mr-2" />
                   Hari Terfilter ({monthDates.length} tanggal)
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => openPreview('all')}>
                   <Eye className="w-4 h-4 mr-2" />
                   Semua Hari ({allMonthDates.length} tanggal)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Export Excel</div>
+                <DropdownMenuItem onClick={() => { setExportMode('filtered'); setTimeout(() => exportToExcel(), 0); }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel - Hari Terfilter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setExportMode('all'); setTimeout(() => exportToExcel(), 0); }}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel - Semua Hari
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
