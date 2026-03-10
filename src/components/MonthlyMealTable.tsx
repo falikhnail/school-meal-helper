@@ -582,7 +582,7 @@ export function MonthlyMealTable({
                           return (
                             <td 
                               key={date.toISOString()} 
-                              className="py-2 px-1"
+                              className="py-1.5 sm:py-2 px-0.5 sm:px-1"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex justify-center">
@@ -592,14 +592,14 @@ export function MonthlyMealTable({
                                     handleCheckboxChange(teacher, date, isChecked);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                  className="h-4 w-4 sm:h-5 sm:w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
                               </div>
                             </td>
                           );
                         })}
-                        <td className="py-3 px-2 text-right">
-                          <span className={`text-sm font-medium ${teacherMonthTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                        <td className="py-2 sm:py-3 px-1 sm:px-2 text-right">
+                          <span className={`text-xs sm:text-sm font-medium ${teacherMonthTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
                             {formatCurrency(teacherMonthTotal)}
                           </span>
                         </td>
