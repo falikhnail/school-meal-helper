@@ -496,7 +496,7 @@ export function MonthlyMealTable({
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-1.5" size="sm">
                   <FileDown className="w-4 h-4" />
                   <span className="hidden sm:inline">Export</span>
                   <ChevronDown className="w-3 h-3" />
