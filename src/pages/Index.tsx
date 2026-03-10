@@ -76,6 +76,13 @@ const Index = () => {
           currentYear={selectedYear}
           getMonthlyTotal={getMonthlyTotal}
         />
+        <ReminderBanner
+          teachers={teachers}
+          month={selectedMonth}
+          year={selectedYear}
+          getTeacherMonthlyTotal={getTeacherMonthlyTotal}
+          getMonthlyPayment={getMonthlyPayment}
+        />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
