@@ -470,9 +470,9 @@ export function MonthlyMealTable({
             {isBulkMode && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-1.5" size="sm">
                     <Calendar className="w-4 h-4" />
-                    Minggu ({selectedWeeks.length})
+                    <span className="hidden xs:inline">Minggu</span> ({selectedWeeks.length})
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
