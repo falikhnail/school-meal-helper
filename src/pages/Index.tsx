@@ -4,6 +4,7 @@ import { TeacherManager } from '@/components/TeacherManager';
 import { MonthlyMealTable } from '@/components/MonthlyMealTable';
 import { MonthlySummary } from '@/components/MonthlySummary';
 import { MonthYearFilter } from '@/components/MonthYearFilter';
+import { ReminderBanner } from '@/components/ReminderBanner';
 import { useMealTracker } from '@/hooks/useMealTracker';
 import { useState } from 'react';
 
@@ -74,6 +75,13 @@ const Index = () => {
           currentMonth={selectedMonth}
           currentYear={selectedYear}
           getMonthlyTotal={getMonthlyTotal}
+        />
+        <ReminderBanner
+          teachers={teachers}
+          month={selectedMonth}
+          year={selectedYear}
+          getTeacherMonthlyTotal={getTeacherMonthlyTotal}
+          getMonthlyPayment={getMonthlyPayment}
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

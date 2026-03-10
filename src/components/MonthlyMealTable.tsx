@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers, Calendar } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers, Calendar, FileSpreadsheet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -30,6 +30,7 @@ import {
 } from '@/components/ui/dialog';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const DAY_NAMES = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
 const DAY_FILTERS = [
@@ -319,6 +320,56 @@ export function MonthlyMealTable({
     doc.save(`data-makan-${monthName}-${year}.pdf`);
   };
 
+  const exportToExcel = (mode: 'filtered' | 'all') => {
+    const exportAll = mode === 'all';
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0) {
+      alert('Tidak ada data guru untuk di-export.');
+      return;
+    }
+    setShowPreview(false);
+
+    const monthName = getMonthName(month);
+    const exportDates = exportAll ? allMonthDates : monthDates;
+
+    const getExportTotal = (teacherId: string) => {
+      return exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+    };
+
+    // Build worksheet data
+    const headers = ['No', 'Nama', 'Keterangan', ...exportDates.map(d => {
+      const dayName = DAY_NAMES_FULL[d.getDay()].substring(0, 3);
+      return `${dayName} ${d.getDate()}`;
+    }), 'Jumlah Porsi', 'Total Tagihan', 'Status'];
+
+    const rows = exportTeachers.map((teacher, idx) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
+      const payment = getMonthlyPayment(teacher.id, month, year);
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal, payment?.isPaid ? 'Lunas' : 'Belum'];
+    });
+
+    const exportMonthTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+    rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportMonthTotal, '']);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    
+    // Set column widths
+    ws['!cols'] = [
+      { wch: 4 }, { wch: 20 }, { wch: 15 },
+      ...exportDates.map(() => ({ wch: 6 })),
+      { wch: 12 }, { wch: 15 }, { wch: 10 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${year}`);
+    XLSX.writeFile(wb, `data-makan-${monthName}-${year}.xlsx`);
+  };
+
   // Calculate paid and unpaid totals
   const paidTotal = filteredTeachers.reduce((sum, teacher) => {
     const payment = getMonthlyPayment(teacher.id, month, year);
@@ -344,7 +395,7 @@ export function MonthlyMealTable({
               </p>
             </div>
           </div>
-          <div className="flex flex-col sm:flex-row gap-2">
+          <div className="flex flex-wrap gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -356,9 +407,9 @@ export function MonthlyMealTable({
             </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-2" size="sm">
                   <Filter className="w-4 h-4" />
-                  Hari ({selectedDays.length})
+                  <span className="hidden xs:inline">Hari</span> ({selectedDays.length})
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
@@ -386,7 +437,8 @@ export function MonthlyMealTable({
                 <TooltipTrigger asChild>
                   <Button
                     variant={isBulkMode ? "default" : "outline"}
-                    className="gap-2"
+                    className="gap-1.5"
+                    size="sm"
                     onClick={() => setIsBulkMode(!isBulkMode)}
                   >
                     {isBulkMode ? (
@@ -418,9 +470,9 @@ export function MonthlyMealTable({
             {isBulkMode && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
+                  <Button variant="outline" className="gap-1.5" size="sm">
                     <Calendar className="w-4 h-4" />
-                    Minggu ({selectedWeeks.length})
+                    <span className="hidden xs:inline">Minggu</span> ({selectedWeeks.length})
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
@@ -444,21 +496,31 @@ export function MonthlyMealTable({
             )}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
+                <Button variant="outline" className="gap-1.5" size="sm">
                   <FileDown className="w-4 h-4" />
-                  Export PDF
+                  <span className="hidden sm:inline">Export</span>
                   <ChevronDown className="w-3 h-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover">
+              <DropdownMenuContent align="end" className="bg-popover w-56">
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Export PDF</div>
                 <DropdownMenuItem onClick={() => openPreview('filtered')}>
                   <Eye className="w-4 h-4 mr-2" />
                   Hari Terfilter ({monthDates.length} tanggal)
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => openPreview('all')}>
                   <Eye className="w-4 h-4 mr-2" />
                   Semua Hari ({allMonthDates.length} tanggal)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Export Excel</div>
+                <DropdownMenuItem onClick={() => exportToExcel('filtered')}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel - Hari Terfilter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => exportToExcel('all')}>
+                  <FileSpreadsheet className="w-4 h-4 mr-2" />
+                  Excel - Semua Hari
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -476,26 +538,26 @@ export function MonthlyMealTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto -mx-4 px-4">
+            <div className="overflow-x-auto -mx-4 px-0 sm:px-4">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-border">
-                    <th className="text-left py-3 px-2 text-sm font-medium text-muted-foreground sticky left-0 bg-card z-10 min-w-[140px]">
+                    <th className="text-left py-2 sm:py-3 px-2 text-xs sm:text-sm font-medium text-muted-foreground sticky left-0 bg-card z-10 min-w-[100px] sm:min-w-[140px]">
                       Nama
                     </th>
                     {monthDates.map((date) => (
                       <th
                         key={date.toISOString()}
-                        className="text-center py-3 px-1 text-sm font-medium text-muted-foreground min-w-[40px]"
+                        className="text-center py-2 sm:py-3 px-0.5 sm:px-1 text-xs sm:text-sm font-medium text-muted-foreground min-w-[32px] sm:min-w-[40px]"
                       >
-                        <div className="text-[10px] text-muted-foreground/70">{DAY_NAMES[date.getDay()]}</div>
-                        <div className="text-xs">{date.getDate()}</div>
+                        <div className="text-[9px] sm:text-[10px] text-muted-foreground/70">{DAY_NAMES[date.getDay()]}</div>
+                        <div className="text-[10px] sm:text-xs">{date.getDate()}</div>
                       </th>
                     ))}
-                    <th className="text-right py-3 px-2 text-sm font-medium text-muted-foreground min-w-[90px]">
+                    <th className="text-right py-2 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-medium text-muted-foreground min-w-[70px] sm:min-w-[90px]">
                       Total
                     </th>
-                    <th className="text-center py-3 px-2 text-sm font-medium text-muted-foreground min-w-[100px]">
+                    <th className="text-center py-2 sm:py-3 px-1 sm:px-2 text-xs sm:text-sm font-medium text-muted-foreground min-w-[70px] sm:min-w-[100px]">
                       Status
                     </th>
                   </tr>
@@ -508,9 +570,9 @@ export function MonthlyMealTable({
 
                     return (
                       <tr key={teacher.id} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-3 px-2 sticky left-0 bg-card z-10">
-                          <div className="font-medium text-foreground text-sm">{teacher.name}</div>
-                          <div className="text-xs text-muted-foreground">
+                        <td className="py-2 sm:py-3 px-2 sticky left-0 bg-card z-10">
+                          <div className="font-medium text-foreground text-xs sm:text-sm truncate max-w-[90px] sm:max-w-none">{teacher.name}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground">
                             {ROLE_LABELS[teacher.role]}
                           </div>
                         </td>
@@ -520,7 +582,7 @@ export function MonthlyMealTable({
                           return (
                             <td 
                               key={date.toISOString()} 
-                              className="py-2 px-1"
+                              className="py-1.5 sm:py-2 px-0.5 sm:px-1"
                               onClick={(e) => e.stopPropagation()}
                             >
                               <div className="flex justify-center">
@@ -530,14 +592,14 @@ export function MonthlyMealTable({
                                     handleCheckboxChange(teacher, date, isChecked);
                                   }}
                                   onClick={(e) => e.stopPropagation()}
-                                  className="h-5 w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
+                                  className="h-4 w-4 sm:h-5 sm:w-5 data-[state=checked]:bg-primary data-[state=checked]:border-primary"
                                 />
                               </div>
                             </td>
                           );
                         })}
-                        <td className="py-3 px-2 text-right">
-                          <span className={`text-sm font-medium ${teacherMonthTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
+                        <td className="py-2 sm:py-3 px-1 sm:px-2 text-right">
+                          <span className={`text-xs sm:text-sm font-medium ${teacherMonthTotal > 0 ? 'text-success' : 'text-muted-foreground'}`}>
                             {formatCurrency(teacherMonthTotal)}
                           </span>
                         </td>
