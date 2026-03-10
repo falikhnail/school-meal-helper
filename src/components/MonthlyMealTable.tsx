@@ -513,11 +513,11 @@ export function MonthlyMealTable({
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Export Excel</div>
-                <DropdownMenuItem onClick={() => { setExportMode('filtered'); setTimeout(() => exportToExcel(), 0); }}>
+                <DropdownMenuItem onClick={() => exportToExcel('filtered')}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Excel - Hari Terfilter
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => { setExportMode('all'); setTimeout(() => exportToExcel(), 0); }}>
+                <DropdownMenuItem onClick={() => exportToExcel('all')}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Excel - Semua Hari
                 </DropdownMenuItem>
