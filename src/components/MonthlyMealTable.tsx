@@ -320,8 +320,8 @@ export function MonthlyMealTable({
     doc.save(`data-makan-${monthName}-${year}.pdf`);
   };
 
-  const exportToExcel = () => {
-    const exportAll = exportMode === 'all';
+  const exportToExcel = (mode: 'filtered' | 'all') => {
+    const exportAll = mode === 'all';
     const exportTeachers = filteredTeachers;
     if (exportTeachers.length === 0) {
       alert('Tidak ada data guru untuk di-export.');
