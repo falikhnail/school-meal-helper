@@ -1,5 +1,9 @@
 import { useState } from 'react';
-import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers, Calendar, FileSpreadsheet } from 'lucide-react';
+import { Sun, Search, FileDown, Check, X, Filter, ChevronDown, Eye, MousePointerClick, Layers, Calendar as CalendarIcon, FileSpreadsheet, CalendarRange } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { format } from 'date-fns';
+import { id as localeId } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -81,7 +85,11 @@ export function MonthlyMealTable({
   const [showPreview, setShowPreview] = useState(false);
   const [exportMode, setExportMode] = useState<'filtered' | 'all'>('filtered');
   const [isBulkMode, setIsBulkMode] = useState(true); // Toggle between bulk and individual mode
-  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([1, 2, 3, 4, 5]); // Default all weeks (1-5 to cover months with 5 weeks)
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [showCustomDateExport, setShowCustomDateExport] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [customExportFormat, setCustomExportFormat] = useState<'pdf' | 'excel'>('pdf');
   
   const allMonthDates = getMonthDates(month, year);
   const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
@@ -357,8 +365,6 @@ export function MonthlyMealTable({
     rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportMonthTotal, '']);
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    
-    // Set column widths
     ws['!cols'] = [
       { wch: 4 }, { wch: 20 }, { wch: 15 },
       ...exportDates.map(() => ({ wch: 6 })),
@@ -368,6 +374,135 @@ export function MonthlyMealTable({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${year}`);
     XLSX.writeFile(wb, `data-makan-${monthName}-${year}.xlsx`);
+  };
+
+  // Custom date range export helpers
+  const getCustomDateRange = (): Date[] => {
+    if (!customStartDate || !customEndDate) return [];
+    const dates: Date[] = [];
+    const current = new Date(customStartDate);
+    while (current <= customEndDate) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const exportCustomToPDF = () => {
+    const exportDates = getCustomDateRange();
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0 || exportDates.length === 0) return;
+    setShowCustomDateExport(false);
+
+    const doc = new jsPDF('landscape');
+    const startLabel = format(customStartDate!, 'd MMM yyyy', { locale: localeId });
+    const endLabel = format(customEndDate!, 'd MMM yyyy', { locale: localeId });
+
+    doc.setFontSize(16);
+    doc.text(`Data Makan - ${startLabel} s/d ${endLabel}`, 14, 15);
+    doc.setFontSize(8);
+    doc.text(`Rentang Custom: ${exportDates.length} hari`, 14, 20);
+
+    const dateHeaders = exportDates.map(date => {
+      const dayName = DAY_NAMES_FULL[date.getDay()].substring(0, 3);
+      return `${dayName}\n${date.getDate()}/${date.getMonth() + 1}`;
+    });
+
+    const headers = ['Nama', 'Ket.', ...dateHeaders, 'Total', 'Status'];
+
+    const getExportTotal = (teacherId: string) =>
+      exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+
+    const tableData = exportTeachers.map((teacher) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? '✓' : '');
+      return [
+        teacher.name,
+        ROLE_LABELS[teacher.role].substring(0, 8),
+        ...mealStatuses,
+        formatCurrency(teacherTotal),
+        teacherTotal > 0 ? 'Ada' : '-',
+      ];
+    });
+
+    const exportTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+
+    const dateColWidth = exportDates.length > 20 ? 6 : 9;
+    const columnStyles: { [key: string]: object } = {
+      '0': { cellWidth: exportDates.length > 20 ? 25 : 30 },
+      '1': { cellWidth: exportDates.length > 20 ? 12 : 18, halign: 'center' },
+    };
+    exportDates.forEach((_, i) => {
+      columnStyles[String(i + 2)] = { cellWidth: dateColWidth, halign: 'center' };
+    });
+    columnStyles[String(exportDates.length + 2)] = { cellWidth: 20, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(exportDates.length + 3)] = { cellWidth: 12, halign: 'center' };
+
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 25,
+      styles: { fontSize: exportDates.length > 20 ? 5 : 6, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: exportDates.length > 20 ? 4 : 5 },
+      columnStyles,
+      foot: [[
+        { content: 'Total:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(exportTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '', styles: {} },
+      ]],
+    });
+
+    doc.save(`data-makan-custom-${format(customStartDate!, 'yyyyMMdd')}-${format(customEndDate!, 'yyyyMMdd')}.pdf`);
+  };
+
+  const exportCustomToExcel = () => {
+    const exportDates = getCustomDateRange();
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0 || exportDates.length === 0) return;
+    setShowCustomDateExport(false);
+
+    const getExportTotal = (teacherId: string) =>
+      exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+
+    const headers = ['No', 'Nama', 'Keterangan', ...exportDates.map(d => {
+      const dayName = DAY_NAMES_FULL[d.getDay()].substring(0, 3);
+      return `${dayName} ${d.getDate()}/${d.getMonth() + 1}`;
+    }), 'Jumlah Porsi', 'Total Tagihan'];
+
+    const rows = exportTeachers.map((teacher, idx) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal];
+    });
+
+    const exportTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+    rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportTotal]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 4 }, { wch: 20 }, { wch: 15 },
+      ...exportDates.map(() => ({ wch: 7 })),
+      { wch: 12 }, { wch: 15 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Custom Range');
+    XLSX.writeFile(wb, `data-makan-custom-${format(customStartDate!, 'yyyyMMdd')}-${format(customEndDate!, 'yyyyMMdd')}.xlsx`);
+  };
+
+  const handleCustomExport = () => {
+    if (customExportFormat === 'pdf') {
+      exportCustomToPDF();
+    } else {
+      exportCustomToExcel();
+    }
   };
 
   // Calculate paid and unpaid totals
@@ -521,6 +656,16 @@ export function MonthlyMealTable({
                 <DropdownMenuItem onClick={() => exportToExcel('all')}>
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Excel - Semua Hari
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Custom Rentang Tanggal</div>
+                <DropdownMenuItem onClick={() => { setCustomExportFormat('pdf'); setShowCustomDateExport(true); }}>
+                  <CalendarRange className="w-4 h-4 mr-2" />
+                  PDF - Rentang Custom
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setCustomExportFormat('excel'); setShowCustomDateExport(true); }}>
+                  <CalendarRange className="w-4 h-4 mr-2" />
+                  Excel - Rentang Custom
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -733,6 +878,106 @@ export function MonthlyMealTable({
               <Button onClick={exportToPDF} className="gap-2">
                 <FileDown className="w-4 h-4" />
                 Download PDF
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Custom Date Range Export Dialog */}
+        <Dialog open={showCustomDateExport} onOpenChange={setShowCustomDateExport}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarRange className="w-5 h-5 text-primary" />
+                Export Rentang Tanggal Custom
+              </DialogTitle>
+              <DialogDescription>
+                Pilih tanggal mulai dan akhir untuk export {customExportFormat === 'pdf' ? 'PDF' : 'Excel'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Tanggal Mulai</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customStartDate ? format(customStartDate, 'd MMM yyyy', { locale: localeId }) : 'Pilih tanggal'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customStartDate}
+                        onSelect={setCustomStartDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Tanggal Akhir</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customEndDate ? format(customEndDate, 'd MMM yyyy', { locale: localeId }) : 'Pilih tanggal'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customEndDate}
+                        onSelect={setCustomEndDate}
+                        disabled={(date) => customStartDate ? date < customStartDate : false}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {customStartDate && customEndDate && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Rentang</span>
+                    <span className="text-sm font-medium">
+                      {format(customStartDate, 'd MMM yyyy', { locale: localeId })} — {format(customEndDate, 'd MMM yyyy', { locale: localeId })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Jumlah Hari</span>
+                    <span className="text-sm font-medium">{getCustomDateRange().length} hari</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Format</span>
+                    <Badge variant="secondary">{customExportFormat === 'pdf' ? 'PDF' : 'Excel'}</Badge>
+                  </div>
+                </div>
+              )}
+
+              {customStartDate && customEndDate && getCustomDateRange().length > 31 && (
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
+                  ⚠️ Rentang lebih dari 31 hari. Ukuran kolom di PDF mungkin sangat kecil.
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setShowCustomDateExport(false)}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleCustomExport}
+                disabled={!customStartDate || !customEndDate}
+                className="gap-2"
+              >
+                <FileDown className="w-4 h-4" />
+                Download {customExportFormat === 'pdf' ? 'PDF' : 'Excel'}
               </Button>
             </DialogFooter>
           </DialogContent>
