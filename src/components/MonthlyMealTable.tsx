@@ -85,7 +85,11 @@ export function MonthlyMealTable({
   const [showPreview, setShowPreview] = useState(false);
   const [exportMode, setExportMode] = useState<'filtered' | 'all'>('filtered');
   const [isBulkMode, setIsBulkMode] = useState(true); // Toggle between bulk and individual mode
-  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([1, 2, 3, 4, 5]); // Default all weeks (1-5 to cover months with 5 weeks)
+  const [selectedWeeks, setSelectedWeeks] = useState<number[]>([1, 2, 3, 4, 5]);
+  const [showCustomDateExport, setShowCustomDateExport] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState<Date | undefined>(undefined);
+  const [customEndDate, setCustomEndDate] = useState<Date | undefined>(undefined);
+  const [customExportFormat, setCustomExportFormat] = useState<'pdf' | 'excel'>('pdf');
   
   const allMonthDates = getMonthDates(month, year);
   const monthDates = allMonthDates.filter(date => selectedDays.includes(date.getDay()));
