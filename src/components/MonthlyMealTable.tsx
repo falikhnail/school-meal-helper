@@ -657,6 +657,16 @@ export function MonthlyMealTable({
                   <FileSpreadsheet className="w-4 h-4 mr-2" />
                   Excel - Semua Hari
                 </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Custom Rentang Tanggal</div>
+                <DropdownMenuItem onClick={() => { setCustomExportFormat('pdf'); setShowCustomDateExport(true); }}>
+                  <CalendarRange className="w-4 h-4 mr-2" />
+                  PDF - Rentang Custom
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { setCustomExportFormat('excel'); setShowCustomDateExport(true); }}>
+                  <CalendarRange className="w-4 h-4 mr-2" />
+                  Excel - Rentang Custom
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
