@@ -606,7 +606,7 @@ export function MonthlyMealTable({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="gap-1.5" size="sm">
-                    <Calendar className="w-4 h-4" />
+                    <CalendarIcon className="w-4 h-4" />
                     <span className="hidden xs:inline">Minggu</span> ({selectedWeeks.length})
                   </Button>
                 </DropdownMenuTrigger>
