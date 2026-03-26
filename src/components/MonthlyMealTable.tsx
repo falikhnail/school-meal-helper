@@ -365,8 +365,6 @@ export function MonthlyMealTable({
     rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportMonthTotal, '']);
 
     const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-    
-    // Set column widths
     ws['!cols'] = [
       { wch: 4 }, { wch: 20 }, { wch: 15 },
       ...exportDates.map(() => ({ wch: 6 })),
@@ -376,6 +374,135 @@ export function MonthlyMealTable({
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, `${monthName} ${year}`);
     XLSX.writeFile(wb, `data-makan-${monthName}-${year}.xlsx`);
+  };
+
+  // Custom date range export helpers
+  const getCustomDateRange = (): Date[] => {
+    if (!customStartDate || !customEndDate) return [];
+    const dates: Date[] = [];
+    const current = new Date(customStartDate);
+    while (current <= customEndDate) {
+      dates.push(new Date(current));
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  };
+
+  const exportCustomToPDF = () => {
+    const exportDates = getCustomDateRange();
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0 || exportDates.length === 0) return;
+    setShowCustomDateExport(false);
+
+    const doc = new jsPDF('landscape');
+    const startLabel = format(customStartDate!, 'd MMM yyyy', { locale: localeId });
+    const endLabel = format(customEndDate!, 'd MMM yyyy', { locale: localeId });
+
+    doc.setFontSize(16);
+    doc.text(`Data Makan - ${startLabel} s/d ${endLabel}`, 14, 15);
+    doc.setFontSize(8);
+    doc.text(`Rentang Custom: ${exportDates.length} hari`, 14, 20);
+
+    const dateHeaders = exportDates.map(date => {
+      const dayName = DAY_NAMES_FULL[date.getDay()].substring(0, 3);
+      return `${dayName}\n${date.getDate()}/${date.getMonth() + 1}`;
+    });
+
+    const headers = ['Nama', 'Ket.', ...dateHeaders, 'Total', 'Status'];
+
+    const getExportTotal = (teacherId: string) =>
+      exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+
+    const tableData = exportTeachers.map((teacher) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? '✓' : '');
+      return [
+        teacher.name,
+        ROLE_LABELS[teacher.role].substring(0, 8),
+        ...mealStatuses,
+        formatCurrency(teacherTotal),
+        teacherTotal > 0 ? 'Ada' : '-',
+      ];
+    });
+
+    const exportTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+
+    const dateColWidth = exportDates.length > 20 ? 6 : 9;
+    const columnStyles: { [key: string]: object } = {
+      '0': { cellWidth: exportDates.length > 20 ? 25 : 30 },
+      '1': { cellWidth: exportDates.length > 20 ? 12 : 18, halign: 'center' },
+    };
+    exportDates.forEach((_, i) => {
+      columnStyles[String(i + 2)] = { cellWidth: dateColWidth, halign: 'center' };
+    });
+    columnStyles[String(exportDates.length + 2)] = { cellWidth: 20, halign: 'right', fontStyle: 'bold' };
+    columnStyles[String(exportDates.length + 3)] = { cellWidth: 12, halign: 'center' };
+
+    autoTable(doc, {
+      head: [headers],
+      body: tableData,
+      startY: 25,
+      styles: { fontSize: exportDates.length > 20 ? 5 : 6, cellPadding: 1 },
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, halign: 'center', fontSize: exportDates.length > 20 ? 4 : 5 },
+      columnStyles,
+      foot: [[
+        { content: 'Total:', colSpan: exportDates.length + 2, styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: formatCurrency(exportTotal), styles: { halign: 'right', fontStyle: 'bold' } },
+        { content: '', styles: {} },
+      ]],
+    });
+
+    doc.save(`data-makan-custom-${format(customStartDate!, 'yyyyMMdd')}-${format(customEndDate!, 'yyyyMMdd')}.pdf`);
+  };
+
+  const exportCustomToExcel = () => {
+    const exportDates = getCustomDateRange();
+    const exportTeachers = filteredTeachers;
+    if (exportTeachers.length === 0 || exportDates.length === 0) return;
+    setShowCustomDateExport(false);
+
+    const getExportTotal = (teacherId: string) =>
+      exportDates.reduce((sum, date) => {
+        const record = getMealRecord(teacherId, date);
+        return sum + (record ? record.cost : 0);
+      }, 0);
+
+    const headers = ['No', 'Nama', 'Keterangan', ...exportDates.map(d => {
+      const dayName = DAY_NAMES_FULL[d.getDay()].substring(0, 3);
+      return `${dayName} ${d.getDate()}/${d.getMonth() + 1}`;
+    }), 'Jumlah Porsi', 'Total Tagihan'];
+
+    const rows = exportTeachers.map((teacher, idx) => {
+      const teacherTotal = getExportTotal(teacher.id);
+      const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal];
+    });
+
+    const exportTotal = exportTeachers.reduce((sum, t) => sum + getExportTotal(t.id), 0);
+    rows.push(['', '', 'TOTAL', ...exportDates.map(() => ''), '', exportTotal]);
+
+    const ws = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    ws['!cols'] = [
+      { wch: 4 }, { wch: 20 }, { wch: 15 },
+      ...exportDates.map(() => ({ wch: 7 })),
+      { wch: 12 }, { wch: 15 },
+    ];
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Custom Range');
+    XLSX.writeFile(wb, `data-makan-custom-${format(customStartDate!, 'yyyyMMdd')}-${format(customEndDate!, 'yyyyMMdd')}.xlsx`);
+  };
+
+  const handleCustomExport = () => {
+    if (customExportFormat === 'pdf') {
+      exportCustomToPDF();
+    } else {
+      exportCustomToExcel();
+    }
   };
 
   // Calculate paid and unpaid totals
