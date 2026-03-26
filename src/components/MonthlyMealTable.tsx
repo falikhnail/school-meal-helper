@@ -882,6 +882,106 @@ export function MonthlyMealTable({
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Custom Date Range Export Dialog */}
+        <Dialog open={showCustomDateExport} onOpenChange={setShowCustomDateExport}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <CalendarRange className="w-5 h-5 text-primary" />
+                Export Rentang Tanggal Custom
+              </DialogTitle>
+              <DialogDescription>
+                Pilih tanggal mulai dan akhir untuk export {customExportFormat === 'pdf' ? 'PDF' : 'Excel'}
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Tanggal Mulai</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customStartDate ? format(customStartDate, 'd MMM yyyy', { locale: localeId }) : 'Pilih tanggal'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customStartDate}
+                        onSelect={setCustomStartDate}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Tanggal Akhir</label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {customEndDate ? format(customEndDate, 'd MMM yyyy', { locale: localeId }) : 'Pilih tanggal'}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={customEndDate}
+                        onSelect={setCustomEndDate}
+                        disabled={(date) => customStartDate ? date < customStartDate : false}
+                        initialFocus
+                        className="p-3 pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+              </div>
+
+              {customStartDate && customEndDate && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Rentang</span>
+                    <span className="text-sm font-medium">
+                      {format(customStartDate, 'd MMM yyyy', { locale: localeId })} — {format(customEndDate, 'd MMM yyyy', { locale: localeId })}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Jumlah Hari</span>
+                    <span className="text-sm font-medium">{getCustomDateRange().length} hari</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Format</span>
+                    <Badge variant="secondary">{customExportFormat === 'pdf' ? 'PDF' : 'Excel'}</Badge>
+                  </div>
+                </div>
+              )}
+
+              {customStartDate && customEndDate && getCustomDateRange().length > 31 && (
+                <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-sm text-orange-600">
+                  ⚠️ Rentang lebih dari 31 hari. Ukuran kolom di PDF mungkin sangat kecil.
+                </div>
+              )}
+            </div>
+            
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => setShowCustomDateExport(false)}>
+                Batal
+              </Button>
+              <Button
+                onClick={handleCustomExport}
+                disabled={!customStartDate || !customEndDate}
+                className="gap-2"
+              >
+                <FileDown className="w-4 h-4" />
+                Download {customExportFormat === 'pdf' ? 'PDF' : 'Excel'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
