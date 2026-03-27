@@ -277,10 +277,10 @@ export function MonthlyMealTable({
       const teacherTotal = getExportTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
-      // Create meal status for each date - show ✓ for meals, empty for no meal
+      // Create meal status for each date - show ✔ for meals, empty for no meal
       const mealStatuses = exportDates.map(date => {
         const record = getMealRecord(teacher.id, date);
-        return record ? '✓' : '';
+        return record ? '✔' : '';
       });
       
       return [
@@ -357,7 +357,7 @@ export function MonthlyMealTable({
       const teacherTotal = getExportTotal(teacher.id);
       const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
       const payment = getMonthlyPayment(teacher.id, month, year);
-      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✔' : '');
       return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal, payment?.isPaid ? 'Lunas' : 'Belum'];
     });
 
@@ -418,7 +418,7 @@ export function MonthlyMealTable({
 
     const tableData = exportTeachers.map((teacher) => {
       const teacherTotal = getExportTotal(teacher.id);
-      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? '✓' : '');
+      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? '✔' : '');
       return [
         teacher.name,
         ROLE_LABELS[teacher.role].substring(0, 8),
@@ -478,7 +478,7 @@ export function MonthlyMealTable({
     const rows = exportTeachers.map((teacher, idx) => {
       const teacherTotal = getExportTotal(teacher.id);
       const porsi = exportDates.filter(d => !!getMealRecord(teacher.id, d)).length;
-      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✓' : '');
+      const mealStatuses = exportDates.map(d => getMealRecord(teacher.id, d) ? '✔' : '');
       return [idx + 1, teacher.name, ROLE_LABELS[teacher.role], ...mealStatuses, porsi, teacherTotal];
     });
 
