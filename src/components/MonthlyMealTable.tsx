@@ -277,10 +277,10 @@ export function MonthlyMealTable({
       const teacherTotal = getExportTotal(teacher.id);
       const payment = getMonthlyPayment(teacher.id, month, year);
       
-      // Create meal status for each date - show ✔ for meals, empty for no meal
+      // Mark cells that have meals - use placeholder that will be drawn as checkmark
       const mealStatuses = exportDates.map(date => {
         const record = getMealRecord(teacher.id, date);
-        return record ? '✔' : '';
+        return record ? 'HAS_MEAL' : '';
       });
       
       return [
@@ -323,6 +323,18 @@ export function MonthlyMealTable({
         { content: formatCurrency(exportMonthTotal), styles: { halign: 'right', fontStyle: 'bold' } },
         { content: '', styles: {} },
       ]],
+      didDrawCell: (data) => {
+        if (data.section === 'body' && data.cell.raw === 'HAS_MEAL') {
+          const x = data.cell.x + data.cell.width / 2;
+          const y = data.cell.y + data.cell.height / 2;
+          const size = Math.min(data.cell.width, data.cell.height) * 0.35;
+          doc.setDrawColor(34, 139, 34);
+          doc.setLineWidth(0.4);
+          doc.line(x - size * 0.5, y, x - size * 0.1, y + size * 0.4);
+          doc.line(x - size * 0.1, y + size * 0.4, x + size * 0.5, y - size * 0.4);
+          data.cell.text = [];
+        }
+      },
     });
 
     doc.save(`data-makan-${monthName}-${year}.pdf`);
