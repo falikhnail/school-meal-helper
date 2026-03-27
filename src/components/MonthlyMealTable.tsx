@@ -430,7 +430,7 @@ export function MonthlyMealTable({
 
     const tableData = exportTeachers.map((teacher) => {
       const teacherTotal = getExportTotal(teacher.id);
-      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? '✔' : '');
+      const mealStatuses = exportDates.map(date => getMealRecord(teacher.id, date) ? 'HAS_MEAL' : '');
       return [
         teacher.name,
         ROLE_LABELS[teacher.role].substring(0, 8),
