@@ -46,7 +46,7 @@ export interface MonthlyPayment {
 }
 
 export const MEAL_PRICES = {
-  siang: 10000,
+  siang: 15000,
 } as const;
 
 export const DAYS_OF_WEEK = [
